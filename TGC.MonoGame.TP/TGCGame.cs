@@ -78,7 +78,7 @@ namespace TGC.MonoGame.TP
             
             // Aca es donde deberiamos cargar todos los contenido necesarios antes de iniciar el juego.
             SpriteBatch = new SpriteBatch(GraphicsDevice);
-            //var texture = Content.Load<Texture2D>(ContentFolderTextures + "hullA"); 
+            //var texture = Content.Load<Texture3D>(ContentFolderTextures + "hullA"); 
             // Cargo el modelo del logo.
             Model model = Content.Load<Model>(ContentFolder3D + "T90");
 

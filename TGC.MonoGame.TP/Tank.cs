@@ -7,13 +7,15 @@ using Microsoft.Xna.Framework.Input;
 public class Tank{
     private Model Model { get; set; }
     private Effect Effect { get; set; }
-    //private Texture2D tex { get; set; }
+    //private TextureD tex { get; set; }
     private Vector3 _rotation { get; set; }
+    //private float _speed = 0;
 
     private float yaw = 0;
-    private Vector3 _position;
+    private Vector3 _position = Vector3.Zero;
 
     private Matrix localRotation;
+
     private Matrix World { get; set; }
 
     public Tank(Model modelo,Effect efecto)
@@ -32,6 +34,7 @@ public class Tank{
                 meshPart.Effect = Effect;
             }
         }
+        
         //Model.Meshes[0].MeshParts[0].Effect.Parameters["Texture"].SetValue(t); 
 }
 
@@ -63,27 +66,30 @@ public class Tank{
     public void Update(GameTime gameTime)
     {
         
-
+        
         // Falta el elapsed time y velocidades
         if (Keyboard.GetState().IsKeyDown(Keys.W))
         {
-            _position += _rotation *0.5f;
+            _position += _rotation *0.1f;
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.S))
         {
-            _position -= _rotation *0.5f;
+            _position -= _rotation *0.1f;
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            yaw += 0.1f;
-            _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(0.1f));
+            yaw += 0.01f;
+            _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(0.01f));
+            _position += Vector3.Transform(_rotation,Matrix.CreateRotationY(0.01f))*0.02f;
+
         }
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            yaw -= 0.1f;
-            _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-0.1f));
+            yaw -= 0.01f;
+            _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-0.01f));
+            _position += Vector3.Transform(_rotation,Matrix.CreateRotationY(-0.01f))*0.02f;
         }
         
         
@@ -92,19 +98,13 @@ public class Tank{
 
     public void Draw(Matrix View, Matrix Projection)
     {
-        float i = 0.1f;
-
         Effect.Parameters["View"].SetValue(View);
         Effect.Parameters["Projection"].SetValue(Projection);
 
         foreach (var mesh in Model.Meshes)
         {
             Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
-            Effect.Parameters["DiffuseColor"].SetValue(new Vector3(i+0.1f,i,i-0.1f));
             mesh.Draw();
-            i+=0.1f;
-            if(i>=1f)
-                i=0.1f;
         }
     }
 }
