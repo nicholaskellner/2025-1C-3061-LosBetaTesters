@@ -39,16 +39,15 @@ namespace TGC.MonoGame.TP
 
         private GraphicsDeviceManager Graphics { get; }
         private SpriteBatch SpriteBatch { get; set; }
+
         private Effect Effect { get; set; }
         private Matrix View { get; set; }
         private Matrix Projection { get; set; }
 
+        private Model grass;
+
         private Tank tanque;
 
-        /// <summary>
-        ///     Se llama una sola vez, al principio cuando se ejecuta el ejemplo.
-        ///     Escribir aqui el codigo de inicializacion: el procesamiento que podemos pre calcular para nuestro juego.
-        /// </summary>
         protected override void Initialize()
         {
             // La logica de inicializacion que no depende del contenido se recomienda poner en este metodo.
@@ -59,47 +58,23 @@ namespace TGC.MonoGame.TP
             var rasterizerState = new RasterizerState();
             rasterizerState.CullMode = CullMode.None;
             GraphicsDevice.RasterizerState = rasterizerState;
-            // Seria hasta aca.
-
-            View = Matrix.CreateLookAt(new Vector3(15,10,0), Vector3.Zero, Vector3.Up);
+            View = Matrix.CreateLookAt(new Vector3(15,5,0), Vector3.Zero, Vector3.Up);
             Projection =
                 Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 250);
 
             base.Initialize();
         }
 
-        /// <summary>
-        ///     Se llama una sola vez, al principio cuando se ejecuta el ejemplo, despues de Initialize.
-        ///     Escribir aqui el codigo de inicializacion: cargar modelos, texturas, estructuras de optimizacion, el procesamiento
-        ///     que podemos pre calcular para nuestro juego.
-        /// </summary>
         protected override void LoadContent()
         {
-            
-            // Aca es donde deberiamos cargar todos los contenido necesarios antes de iniciar el juego.
-            SpriteBatch = new SpriteBatch(GraphicsDevice);
-            //var texture = Content.Load<Texture3D>(ContentFolderTextures + "hullA"); 
-            // Cargo el modelo del logo.
-            Model model = Content.Load<Model>(ContentFolder3D + "T90");
-
-            // Cargo un efecto basico propio declarado en el Content pipeline.
-            // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
-            Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
-            tanque = new Tank(model,effect);
-
+            grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
+            Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
+            tanque = new Tank(Content);
             base.LoadContent();
         }
 
-        /// <summary>
-        ///     Se llama en cada frame.
-        ///     Se debe escribir toda la logica de computo del modelo, asi como tambien verificar entradas del usuario y reacciones
-        ///     ante ellas.
-        /// </summary>
         protected override void Update(GameTime gameTime)
         {
-            // Aca deberiamos poner toda la logica de actualizacion del juego.
-
-            // Capturar Input teclado
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
                 //Salgo del juego.
@@ -107,18 +82,19 @@ namespace TGC.MonoGame.TP
             }
             
             tanque.Update(gameTime);
+            //Para posicionar la camara atras
+            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*15 + new Vector3(0,5,0), tanque._position, Vector3.Up);
 
             base.Update(gameTime);
         }
 
-        /// <summary>
-        ///     Se llama cada vez que hay que refrescar la pantalla.
-        ///     Escribir aqui el codigo referido al renderizado.
-        /// </summary>
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
             tanque.Draw(View,Projection);
+
+            //Para tener algo de piso
+            grass.Draw(Matrix.CreateScale(10,0,10)*Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
 
         protected override void UnloadContent()
