@@ -10,12 +10,14 @@ public class Tank{
     public Vector3 _rotation { get; set; }
 
     private float yaw = 0;
+    private float turret_yaw = 0;
     private float speed = 0;
     public Vector3 _position = Vector3.Zero;
 
     private Matrix localRotation;
 
     private Matrix World { get; set; }
+    private Matrix World2;
 
     public Tank(ContentManager content)
     {
@@ -79,19 +81,32 @@ public class Tank{
             }
             _position += _rotation*0.015f;
         }
+
+        if (Mouse.GetState().X > 910)
+        {
+            turret_yaw -= 0.02f;
+        }
+        if (Mouse.GetState().X < 910)
+        {
+            turret_yaw += 0.02f;
+        }
         
         speed = 0;
         World = localRotation * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
+        World2 = Matrix.Identity * Matrix.CreateRotationZ(turret_yaw);
+        Mouse.SetPosition(910,490);
     }
 
     public void Draw(Matrix View, Matrix Projection)
     {
         Effect.Parameters["View"].SetValue(View);
         Effect.Parameters["Projection"].SetValue(Projection);
-
         foreach (var mesh in Model.Meshes)
         {
+            
             Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
+            if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
+                Effect.Parameters["World"].SetValue(World2 * mesh.ParentBone.Transform * World);
             mesh.Draw();
         }
     }
