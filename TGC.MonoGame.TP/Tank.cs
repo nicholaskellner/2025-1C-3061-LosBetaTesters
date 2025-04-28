@@ -26,14 +26,14 @@ public class Tank{
         _rotation = Vector3.Transform(Vector3.Up,localRotation);
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "BasicShader");
-        foreach (var mesh in Model.Meshes)
+        /*foreach (var mesh in Model.Meshes)
         {
             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
             foreach (var meshPart in mesh.MeshParts)
             {
                 meshPart.Effect = Effect;
             }
-        }
+        }*/
         
         //Model.Meshes[0].MeshParts[0].Effect.Parameters["Texture"].SetValue(t); 
     }
@@ -99,7 +99,7 @@ public class Tank{
 
     public void Draw(Matrix View, Matrix Projection)
     {
-        Effect.Parameters["View"].SetValue(View);
+        /*Effect.Parameters["View"].SetValue(View);
         Effect.Parameters["Projection"].SetValue(Projection);
         foreach (var mesh in Model.Meshes)
         {
@@ -107,6 +107,21 @@ public class Tank{
             Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
             if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
                 Effect.Parameters["World"].SetValue(World2 * mesh.ParentBone.Transform * World);
+            mesh.Draw();
+        }*/
+        foreach (var mesh in Model.Meshes)
+        {
+            foreach (BasicEffect effect in mesh.Effects)
+            {
+                effect.World = mesh.ParentBone.Transform * World;
+                effect.View = View;
+                effect.Projection = Projection;
+                if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
+                    effect.World = World2 * mesh.ParentBone.Transform * World;
+
+                //effect.EnableDefaultLighting();
+            }
+
             mesh.Draw();
         }
     }

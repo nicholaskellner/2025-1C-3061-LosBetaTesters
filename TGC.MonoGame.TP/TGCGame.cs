@@ -34,7 +34,7 @@ namespace TGC.MonoGame.TP
             // Carpeta raiz donde va a estar toda la Media.
             Content.RootDirectory = "Content";
             // Hace que el mouse sea visible.
-            IsMouseVisible = true;
+            IsMouseVisible = false;
         }
 
         private GraphicsDeviceManager Graphics { get; }
@@ -94,7 +94,7 @@ namespace TGC.MonoGame.TP
             tanque.Draw(View,Projection);
 
             //Para tener algo de piso
-            grass.Draw(Matrix.CreateScale(10,0,10)*Matrix.CreateTranslation(1,-2,1),View,Projection);
+            grass.Draw(Matrix.CreateScale(25,0,25) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
 
         protected override void UnloadContent()

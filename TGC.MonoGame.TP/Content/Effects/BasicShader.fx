@@ -19,7 +19,6 @@ uniform float4x4 Projection;
 
 float Time = 0;
 
-
 struct VertexShaderInput
 {
 	float4 Position : POSITION0;
@@ -48,6 +47,7 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
+
     return float4(input.TextureCoordinate,0,1);
 }
 
