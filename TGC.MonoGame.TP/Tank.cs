@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Content;
 public class Tank{
     public const string ContentFolder3D = "Models/";
     public const string ContentFolderEffects = "Effects/";
-    private Model Model { get; set; }
+    public Model Model { get; set; }
     private Effect Effect { get; set; }
     public Vector3 _rotation { get; set; }
 
@@ -105,7 +105,7 @@ public class Tank{
         {
             
             Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
-            if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
+            if ((Model.Meshes[10] == mesh || Model.Meshes[11] == mesh) || (Model.Meshes.Count > 11 && Model.Meshes[11] == mesh))
                 Effect.Parameters["World"].SetValue(World2 * mesh.ParentBone.Transform * World);
             mesh.Draw();
         }

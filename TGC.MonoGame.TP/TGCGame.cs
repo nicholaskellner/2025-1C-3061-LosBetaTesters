@@ -45,7 +45,6 @@ namespace TGC.MonoGame.TP
         private Matrix Projection { get; set; }
 
         private Model grass;
-
         private Tank tanque;
 
         protected override void Initialize()
@@ -68,7 +67,9 @@ namespace TGC.MonoGame.TP
         protected override void LoadContent()
         {
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
+      
             Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
+    
             tanque = new Tank(Content);
             base.LoadContent();
         }
@@ -91,12 +92,40 @@ namespace TGC.MonoGame.TP
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
-            tanque.Draw(View,Projection);
 
+            Effect.Parameters["View"].SetValue(View);
+            Effect.Parameters["Projection"].SetValue(Projection);
+            Effect.Parameters["DiffuseColor"].SetValue(Color.White.ToVector3());
+
+            foreach (var mesh in tanque.Model.Meshes)
+            {
+                Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform);
+
+                foreach (var meshPart in mesh.MeshParts)
+                {
+                    meshPart.Effect = Effect;
+
+                    GraphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+                    GraphicsDevice.Indices = meshPart.IndexBuffer; 
+
+                    foreach (var pass in Effect.CurrentTechnique.Passes)
+                    {
+                        pass.Apply();
+                        GraphicsDevice.DrawIndexedPrimitives(
+                            PrimitiveType.TriangleList,
+                            meshPart.VertexOffset,
+                            0,
+                            meshPart.NumVertices,
+                            meshPart.StartIndex,
+                            meshPart.PrimitiveCount
+                        );
+                    }                   
+                }
+                
+            }
             //Para tener algo de piso
             grass.Draw(Matrix.CreateScale(10,0,10)*Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
-
         protected override void UnloadContent()
         {
             // Libero los recursos.
