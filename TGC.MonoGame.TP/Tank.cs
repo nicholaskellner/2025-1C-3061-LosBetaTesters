@@ -5,9 +5,10 @@ using Microsoft.Xna.Framework.Content;
 public class Tank{
     public const string ContentFolder3D = "Models/";
     public const string ContentFolderEffects = "Effects/";
-    public Model Model { get; set; }
+    private Model Model { get; set; }
     private Effect Effect { get; set; }
     public Vector3 _rotation { get; set; }
+    private GraphicsDevice graphicsDevice;
 
     private float yaw = 0;
     private float turret_yaw = 0;
@@ -19,8 +20,9 @@ public class Tank{
     private Matrix World { get; set; }
     private Matrix World2;
 
-    public Tank(ContentManager content)
+    public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
+        this.graphicsDevice = graphicsDevice;
         //Cree esta porque viene mirando para arriba el tanque.
         localRotation = Matrix.Identity * Matrix.CreateRotationX(MathHelper.ToRadians(-90)) * Matrix.CreateRotationY(MathHelper.ToRadians(90));
         _rotation = Vector3.Transform(Vector3.Up,localRotation);
@@ -99,7 +101,7 @@ public class Tank{
 
     public void Draw(Matrix View, Matrix Projection)
     {
-        Effect.Parameters["View"].SetValue(View);
+        /*Effect.Parameters["View"].SetValue(View);
         Effect.Parameters["Projection"].SetValue(Projection);
         foreach (var mesh in Model.Meshes)
         {
@@ -107,6 +109,31 @@ public class Tank{
             Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
             if ((Model.Meshes[10] == mesh || Model.Meshes[11] == mesh) || (Model.Meshes.Count > 11 && Model.Meshes[11] == mesh))
                 Effect.Parameters["World"].SetValue(World2 * mesh.ParentBone.Transform * World);
+            mesh.Draw();
+        }*/
+        Effect.Parameters["View"].SetValue(View);
+        Effect.Parameters["Projection"].SetValue(Projection);
+        Effect.Parameters["DiffuseColor"].SetValue(Color.White.ToVector3());
+
+        foreach (var mesh in Model.Meshes)
+        {
+            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
+            foreach (var meshPart in mesh.MeshParts)
+            {
+                meshPart.Effect = Effect;
+                
+                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+                graphicsDevice.Indices = meshPart.IndexBuffer;
+
+                foreach (var effecPass in meshPart.Effect.CurrentTechnique.Passes)
+                {
+                    effecPass.Apply();
+                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, meshPart.VertexOffset, 0, meshPart.NumVertices, meshPart.StartIndex, meshPart.PrimitiveCount);
+                }
+
+                //effect.EnableDefaultLighting();
+            }
+
             mesh.Draw();
         }
     }

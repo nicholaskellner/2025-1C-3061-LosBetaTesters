@@ -34,7 +34,7 @@ namespace TGC.MonoGame.TP
             // Carpeta raiz donde va a estar toda la Media.
             Content.RootDirectory = "Content";
             // Hace que el mouse sea visible.
-            IsMouseVisible = true;
+            IsMouseVisible = false;
         }
 
         private GraphicsDeviceManager Graphics { get; }
@@ -45,6 +45,8 @@ namespace TGC.MonoGame.TP
         private Matrix Projection { get; set; }
 
         private Model grass;
+
+        private Model rock;
         private Tank tanque;
 
         protected override void Initialize()
@@ -67,10 +69,10 @@ namespace TGC.MonoGame.TP
         protected override void LoadContent()
         {
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
-      
+            rock = Content.Load<Model>(ContentFolder3D + "rockA");
             Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
     
-            tanque = new Tank(Content);
+            tanque = new Tank(Content, GraphicsDevice);
             base.LoadContent();
         }
 
@@ -84,7 +86,7 @@ namespace TGC.MonoGame.TP
             
             tanque.Update(gameTime);
             //Para posicionar la camara atras
-            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*15 + new Vector3(0,5,0), tanque._position, Vector3.Up);
+            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*15 + new Vector3(50,15,0), tanque._position, Vector3.Up);
 
             base.Update(gameTime);
         }
@@ -92,39 +94,10 @@ namespace TGC.MonoGame.TP
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
-
-            Effect.Parameters["View"].SetValue(View);
-            Effect.Parameters["Projection"].SetValue(Projection);
-            Effect.Parameters["DiffuseColor"].SetValue(Color.White.ToVector3());
-
-            foreach (var mesh in tanque.Model.Meshes)
-            {
-                Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform);
-
-                foreach (var meshPart in mesh.MeshParts)
-                {
-                    meshPart.Effect = Effect;
-
-                    GraphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
-                    GraphicsDevice.Indices = meshPart.IndexBuffer; 
-
-                    foreach (var pass in Effect.CurrentTechnique.Passes)
-                    {
-                        pass.Apply();
-                        GraphicsDevice.DrawIndexedPrimitives(
-                            PrimitiveType.TriangleList,
-                            meshPart.VertexOffset,
-                            0,
-                            meshPart.NumVertices,
-                            meshPart.StartIndex,
-                            meshPart.PrimitiveCount
-                        );
-                    }                   
-                }
-                
-            }
+            tanque.Draw( View, Projection);
+            rock.Draw(Matrix.CreateTranslation(10, 0, 10), View, Projection);
             //Para tener algo de piso
-            grass.Draw(Matrix.CreateScale(10,0,10)*Matrix.CreateTranslation(1,-2,1),View,Projection);
+            grass.Draw(Matrix.CreateScale(25,0,25) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
         protected override void UnloadContent()
         {
