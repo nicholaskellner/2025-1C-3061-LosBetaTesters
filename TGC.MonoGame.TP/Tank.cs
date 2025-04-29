@@ -28,14 +28,7 @@ public class Tank{
         _rotation = Vector3.Transform(Vector3.Up,localRotation);
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "BasicShader");
-        foreach (var mesh in Model.Meshes)
-        {
-            // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-            foreach (var meshPart in mesh.MeshParts)
-            {
-                meshPart.Effect = Effect;
-            }
-        }
+        
         
         //Model.Meshes[0].MeshParts[0].Effect.Parameters["Texture"].SetValue(t); 
     }
@@ -99,42 +92,28 @@ public class Tank{
         Mouse.SetPosition(910,490);
     }
 
-    public void Draw(Matrix View, Matrix Projection)
+    public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
     {
-        /*Effect.Parameters["View"].SetValue(View);
-        Effect.Parameters["Projection"].SetValue(Projection);
         foreach (var mesh in Model.Meshes)
         {
-            
-            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
-            if ((Model.Meshes[10] == mesh || Model.Meshes[11] == mesh) || (Model.Meshes.Count > 11 && Model.Meshes[11] == mesh))
-                Effect.Parameters["World"].SetValue(World2 * mesh.ParentBone.Transform * World);
-            mesh.Draw();
-        }*/
-        Effect.Parameters["View"].SetValue(View);
-        Effect.Parameters["Projection"].SetValue(Projection);
-        Effect.Parameters["DiffuseColor"].SetValue(Color.White.ToVector3());
-
-        foreach (var mesh in Model.Meshes)
-        {
-            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
-            foreach (var meshPart in mesh.MeshParts)
+            foreach (BasicEffect effect in mesh.Effects)
             {
-                meshPart.Effect = Effect;
-                
-                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
-                graphicsDevice.Indices = meshPart.IndexBuffer;
-
-                foreach (var effecPass in meshPart.Effect.CurrentTechnique.Passes)
-                {
-                    effecPass.Apply();
-                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, meshPart.VertexOffset, 0, meshPart.NumVertices, meshPart.StartIndex, meshPart.PrimitiveCount);
-                }
+                effect.World = mesh.ParentBone.Transform * World;
+                effect.View = View;
+                effect.Projection = Projection;
+                if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
+                    effect.World = World2 * mesh.ParentBone.Transform * World;
 
                 //effect.EnableDefaultLighting();
             }
-
-            mesh.Draw();
+            foreach (var meshPart in mesh.MeshParts){
+                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+                graphicsDevice.Indices = meshPart.IndexBuffer;
+                foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
+                    effectPass.Apply();
+                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,meshPart.VertexOffset, meshPart.StartIndex,meshPart.PrimitiveCount);
+                }
+            }
         }
     }
 }

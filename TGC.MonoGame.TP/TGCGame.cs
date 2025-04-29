@@ -94,7 +94,7 @@ namespace TGC.MonoGame.TP
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
-            tanque.Draw( View, Projection);
+            tanque.Draw(GraphicsDevice, View, Projection);
             rock.Draw(Matrix.CreateTranslation(10, 0, 10), View, Projection);
             //Para tener algo de piso
             grass.Draw(Matrix.CreateScale(25,0,25) * Matrix.CreateTranslation(1,-2,1),View,Projection);
