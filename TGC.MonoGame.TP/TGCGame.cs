@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -47,6 +48,8 @@ namespace TGC.MonoGame.TP
         private Model grass;
 
         private Model rock;
+
+        private Model tree;
         private Tank tanque;
 
         protected override void Initialize()
@@ -70,6 +73,7 @@ namespace TGC.MonoGame.TP
         {
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
             rock = Content.Load<Model>(ContentFolder3D + "rockA");
+            tree = Content.Load<Model>(ContentFolder3D + "tree");
             Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
     
             tanque = new Tank(Content, GraphicsDevice);
@@ -95,9 +99,12 @@ namespace TGC.MonoGame.TP
         {
             GraphicsDevice.Clear(Color.Black);
             tanque.Draw(GraphicsDevice, View, Projection);
-            rock.Draw(Matrix.CreateTranslation(10, 0, 10), View, Projection);
+            for(int i = 0; i < 10; i++)
+            {
+                tree.Draw(Matrix.CreateTranslation(i*2, 0, i*6), View, Projection);
+            }
             //Para tener algo de piso
-            grass.Draw(Matrix.CreateScale(25,0,25) * Matrix.CreateTranslation(1,-2,1),View,Projection);
+            grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
         protected override void UnloadContent()
         {
