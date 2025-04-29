@@ -41,7 +41,7 @@ namespace TGC.MonoGame.TP
         private GraphicsDeviceManager Graphics { get; }
         private SpriteBatch SpriteBatch { get; set; }
 
-        private Effect Effect { get; set; }
+        public List<Vector3> trees { get; set; }
         private Matrix View { get; set; }
         private Matrix Projection { get; set; }
 
@@ -54,6 +54,17 @@ namespace TGC.MonoGame.TP
 
         protected override void Initialize()
         {
+            var r = new Random();
+            trees = new List<Vector3>();
+            for(int i = 0; i< 200; i++){
+                var x = r.NextSingle()*200;
+                var y = r.NextSingle()*200;
+                if(i%2 == 1)
+                    x = -x;
+                if(i%3 == 0)
+                    y = -y;
+                trees.Add(new Vector3(x,y,r.NextSingle()+1f));
+            }
             // La logica de inicializacion que no depende del contenido se recomienda poner en este metodo.
 
             // Apago el backface culling.
@@ -74,7 +85,6 @@ namespace TGC.MonoGame.TP
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
             rock = Content.Load<Model>(ContentFolder3D + "rockA");
             tree = Content.Load<Model>(ContentFolder3D + "tree");
-            Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
     
             tanque = new Tank(Content, GraphicsDevice);
             base.LoadContent();
@@ -90,7 +100,7 @@ namespace TGC.MonoGame.TP
             
             tanque.Update(gameTime);
             //Para posicionar la camara atras
-            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*15 + new Vector3(50,15,0), tanque._position, Vector3.Up);
+            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*50 + new Vector3(0,15,0), tanque._position, Vector3.Up);
 
             base.Update(gameTime);
         }
@@ -101,16 +111,12 @@ namespace TGC.MonoGame.TP
             tanque.Draw(GraphicsDevice, View, Projection);
             for(int i = 0; i < 10; i++)
             {
-                rock.Draw(Matrix.CreateTranslation(-i*15 + 10, 0, -i*25), View, Projection);
+                rock.Draw(Matrix.CreateTranslation(-i*15 + 10 , -2, -i*25), View, Projection);
             }
-            for(int i = 0; i < 10; i++)
+            for(int i = 0; i < 200; i++)
             {
-                for(int j = 0; j < 5; j++)
-                {
-                    tree.Draw(Matrix.CreateTranslation(i*4, 0, j*4), View, Projection);
-                }
+                tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
-            //Para tener algo de piso
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
         protected override void UnloadContent()
