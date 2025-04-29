@@ -101,7 +101,14 @@ namespace TGC.MonoGame.TP
             tanque.Draw(GraphicsDevice, View, Projection);
             for(int i = 0; i < 10; i++)
             {
-                tree.Draw(Matrix.CreateTranslation(i*2, 0, i*6), View, Projection);
+                rock.Draw(Matrix.CreateTranslation(-i*15 + 10, 0, -i*25), View, Projection);
+            }
+            for(int i = 0; i < 10; i++)
+            {
+                for(int j = 0; j < 5; j++)
+                {
+                    tree.Draw(Matrix.CreateTranslation(i*4, 0, j*4), View, Projection);
+                }
             }
             //Para tener algo de piso
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
