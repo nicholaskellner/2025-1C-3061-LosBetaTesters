@@ -56,7 +56,7 @@ namespace TGC.MonoGame.TP
         {
             var r = new Random();
             trees = new List<Vector3>();
-            for(int i = 0; i< 200; i++){
+            for(int i = 0; i< 250; i++){
                 var x = r.NextSingle()*200;
                 var y = r.NextSingle()*200;
                 if(i%2 == 1)
@@ -100,7 +100,9 @@ namespace TGC.MonoGame.TP
             
             tanque.Update(gameTime);
             //Para posicionar la camara atras
-            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*50 + new Vector3(0,15,0), tanque._position, Vector3.Up);
+            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*10 + new Vector3(0,3,0), tanque._position, Vector3.Up);
+            //Para ver mas de lejos descomentar la linea de abajo 
+            //View = Matrix.CreateLookAt(tanque._position - tanque._rotation*50 + new Vector3(0,15,0), tanque._position, Vector3.Up);
 
             base.Update(gameTime);
         }
@@ -109,13 +111,13 @@ namespace TGC.MonoGame.TP
         {
             GraphicsDevice.Clear(Color.Black);
             tanque.Draw(GraphicsDevice, View, Projection);
-            for(int i = 0; i < 10; i++)
+            for(int i = 0; i < 50; i++)
             {
-                rock.Draw(Matrix.CreateTranslation(-i*15 + 10 , -2, -i*25), View, Projection);
+                rock.Draw(Matrix.CreateScale(trees[i].Z*0.7f) * Matrix.CreateRotationY(trees[i].Z*5) *Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
-            for(int i = 0; i < 200; i++)
+            for(int i = 50; i < 250; i++)
             {
-                tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
+                tree.Draw(Matrix.CreateScale(trees[i].Z*0.7f) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }
