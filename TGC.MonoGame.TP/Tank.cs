@@ -19,16 +19,24 @@ public class Tank{
 
     private Matrix World { get; set; }
     private Matrix World2;
+    private Matrix World3;
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
         this.graphicsDevice = graphicsDevice;
         //Cree esta porque viene mirando para arriba el tanque.
-        localRotation = Matrix.Identity * Matrix.CreateRotationX(MathHelper.ToRadians(-90)) * Matrix.CreateRotationY(MathHelper.ToRadians(90));
+        localRotation = Matrix.Identity * Matrix.CreateRotationX(MathHelper.ToRadians(-90)) * Matrix.CreateRotationY(MathHelper.ToRadians(90)) * Matrix.CreateTranslation(0,0,0);
         _rotation = Vector3.Transform(Vector3.Up,localRotation);
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "BasicShader");
-        
+        /*foreach (var mesh in Model.Meshes)
+        {
+            // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
+            foreach (var meshPart in mesh.MeshParts)
+            {
+                meshPart.Effect = Effect;
+            }
+        }*/
         
         //Model.Meshes[0].MeshParts[0].Effect.Parameters["Texture"].SetValue(t); 
     }
@@ -88,7 +96,9 @@ public class Tank{
         
         speed = 0;
         World = localRotation * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
-        World2 = Matrix.Identity * Matrix.CreateRotationZ(turret_yaw);
+        World2 = Matrix.Identity * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateRotationZ(MathHelper.ToRadians(180));
+        //El World3 es para el cañon que lleva un offset
+        World3 = Matrix.Identity *  Matrix.CreateTranslation(0.07f,-1.3f,0.3f) * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateRotationZ(MathHelper.ToRadians(180));
         Mouse.SetPosition(910,490);
     }
 
@@ -96,19 +106,25 @@ public class Tank{
     {
         foreach (var mesh in Model.Meshes)
         {
+            
             foreach (BasicEffect effect in mesh.Effects)
             {
                 effect.World = mesh.ParentBone.Transform * World;
                 effect.View = View;
                 effect.Projection = Projection;
-                if (Model.Meshes[10] == mesh || Model.Meshes[11] == mesh)
-                    effect.World = World2 * mesh.ParentBone.Transform * World;
+                if (Model.Meshes[10] == mesh)
+                    effect.World = World2 * World;
+                if (Model.Meshes[11] == mesh)
+                    effect.World = World3 * World;
+
 
                 //effect.EnableDefaultLighting();
             }
             foreach (var meshPart in mesh.MeshParts){
+                
                 graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
                 graphicsDevice.Indices = meshPart.IndexBuffer;
+                
                 foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
                     effectPass.Apply();
                     graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,meshPart.VertexOffset, meshPart.StartIndex,meshPart.PrimitiveCount);
