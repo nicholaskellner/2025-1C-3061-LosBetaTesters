@@ -5,8 +5,10 @@ using Microsoft.Xna.Framework.Content;
 public class Tank{
     public const string ContentFolder3D = "Models/";
     public const string ContentFolderEffects = "Effects/";
+    public const string ContentFolderTextures = "Models/textures_mod/";
     private Model Model { get; set; }
     private Effect Effect { get; set; }
+    private Texture2D Texture;
     public Vector3 _rotation { get; set; }
     private GraphicsDevice graphicsDevice;
 
@@ -28,17 +30,16 @@ public class Tank{
         localRotation = Matrix.Identity * Matrix.CreateRotationX(MathHelper.ToRadians(-90)) * Matrix.CreateRotationY(MathHelper.ToRadians(90)) * Matrix.CreateTranslation(0,0,0);
         _rotation = Vector3.Transform(Vector3.Up,localRotation);
         Model = content.Load<Model>(ContentFolder3D + "T90");
-        Effect = content.Load<Effect>(ContentFolderEffects + "BasicShader");
-        /*foreach (var mesh in Model.Meshes)
+        Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
+        Texture = content.Load<Texture2D>(ContentFolderTextures + "hullA");
+        foreach (var mesh in Model.Meshes)
         {
             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
             foreach (var meshPart in mesh.MeshParts)
             {
                 meshPart.Effect = Effect;
             }
-        }*/
-        
-        //Model.Meshes[0].MeshParts[0].Effect.Parameters["Texture"].SetValue(t); 
+        }
     }
 
     public void Update(GameTime gameTime)
@@ -107,15 +108,16 @@ public class Tank{
         foreach (var mesh in Model.Meshes)
         {
             
-            foreach (BasicEffect effect in mesh.Effects)
+            foreach (var effect in mesh.Effects)
             {
-                effect.World = mesh.ParentBone.Transform * World;
-                effect.View = View;
-                effect.Projection = Projection;
+                effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
+                effect.Parameters["View"].SetValue(View);
+                effect.Parameters["Projection"].SetValue(Projection);
+                effect.Parameters["Text"]?.SetValue(Texture);
                 if (Model.Meshes[10] == mesh)
-                    effect.World = World2 * World;
+                    effect.Parameters["World"].SetValue(World2 * World);
                 if (Model.Meshes[11] == mesh)
-                    effect.World = World3 * World;
+                    effect.Parameters["World"].SetValue(World3 * World);
 
 
                 //effect.EnableDefaultLighting();

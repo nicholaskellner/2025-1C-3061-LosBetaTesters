@@ -19,6 +19,9 @@ uniform float4x4 Projection;
 
 float Time = 0;
 
+Texture2D Texture;
+SamplerState TextureSampler;
+
 struct VertexShaderInput
 {
 	float4 Position : POSITION0;
@@ -48,9 +51,12 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     return output;
 }
 
+
+
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-	return float4(input.Color,1);
+	float4 texCol = Texture.Sample(TextureSampler, input.TextureCoordinate);
+	return texCol;
 }
 
 technique BasicColorDrawing
