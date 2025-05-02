@@ -20,7 +20,17 @@ uniform float4x4 Projection;
 float Time = 0;
 
 Texture2D Texture;
-SamplerState TextureSampler;
+Texture2D Texture2;
+
+sampler2D TextureSampler = sampler_state
+{
+    Texture = <Texture>;
+};
+
+sampler2D TextureSampler2 = sampler_state
+{
+    Texture = <Texture2>;
+};
 
 struct VertexShaderInput
 {
@@ -32,7 +42,6 @@ struct VertexShaderOutput
 {
     float4 Position : SV_Position0;
 	float2 TextureCoordinate : TEXCOORD0;
-	float3 Color : COLOR;
 };
 
 VertexShaderOutput MainVS(in VertexShaderInput input)
@@ -47,7 +56,6 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     output.Position = mul(viewPosition, Projection);
 
 	output.TextureCoordinate = input.TextureCoordinate;
-	output.Color = float3(output.Position.x,output.Position.y,output.Position.z)*100;
     return output;
 }
 
@@ -55,9 +63,17 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-	float4 texCol = Texture.Sample(TextureSampler, input.TextureCoordinate);
+	float4 texCol = tex2D(TextureSampler, input.TextureCoordinate);
 	return texCol;
 }
+
+float4 SecondaryPS(VertexShaderOutput input) : COLOR
+{
+	float4 texCol = tex2D(TextureSampler2, input.TextureCoordinate);
+	return texCol;
+}
+
+
 
 technique BasicColorDrawing
 {
@@ -67,3 +83,14 @@ technique BasicColorDrawing
 		PixelShader = compile PS_SHADERMODEL MainPS();
 	}
 };
+
+technique SecondaryColorDrawing
+{
+	pass P0
+	{
+		VertexShader = compile VS_SHADERMODEL MainVS();
+		PixelShader = compile PS_SHADERMODEL SecondaryPS();
+	}
+};
+
+

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Content;
+using System;
 public class Tank{
     public const string ContentFolder3D = "Models/";
     public const string ContentFolderEffects = "Effects/";
@@ -9,6 +10,7 @@ public class Tank{
     private Model Model { get; set; }
     private Effect Effect { get; set; }
     private Texture2D Texture;
+    private Texture2D TreadmillTexture;
     public Vector3 _rotation { get; set; }
     private GraphicsDevice graphicsDevice;
 
@@ -32,6 +34,9 @@ public class Tank{
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
         Texture = content.Load<Texture2D>(ContentFolderTextures + "hullA");
+        TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
+        Effect.Parameters["Texture"].SetValue(Texture);
+        Effect.Parameters["Texture2"]?.SetValue(TreadmillTexture);
         foreach (var mesh in Model.Meshes)
         {
             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
@@ -113,19 +118,22 @@ public class Tank{
                 effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
                 effect.Parameters["View"].SetValue(View);
                 effect.Parameters["Projection"].SetValue(Projection);
-                effect.Parameters["Text"]?.SetValue(Texture);
                 if (Model.Meshes[10] == mesh)
                     effect.Parameters["World"].SetValue(World2 * World);
-                if (Model.Meshes[11] == mesh)
+                else if (Model.Meshes[11] == mesh)
                     effect.Parameters["World"].SetValue(World3 * World);
 
 
                 //effect.EnableDefaultLighting();
             }
+
             foreach (var meshPart in mesh.MeshParts){
-                
+                meshPart.Effect.CurrentTechnique = meshPart.Effect.Techniques[0];
                 graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
                 graphicsDevice.Indices = meshPart.IndexBuffer;
+                if (Model.Meshes[12] == mesh || Model.Meshes[1] == mesh)
+                    meshPart.Effect.CurrentTechnique = meshPart.Effect.Techniques[1];
+
                 
                 foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
                     effectPass.Apply();
