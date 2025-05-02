@@ -20,16 +20,10 @@ uniform float4x4 Projection;
 float Time = 0;
 
 Texture2D Texture;
-Texture2D Texture2;
 
 sampler2D TextureSampler = sampler_state
 {
     Texture = <Texture>;
-};
-
-sampler2D TextureSampler2 = sampler_state
-{
-    Texture = <Texture2>;
 };
 
 struct VertexShaderInput
@@ -67,14 +61,6 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 	return texCol;
 }
 
-float4 SecondaryPS(VertexShaderOutput input) : COLOR
-{
-	float4 texCol = tex2D(TextureSampler2, input.TextureCoordinate);
-	return texCol;
-}
-
-
-
 technique BasicColorDrawing
 {
 	pass P0
@@ -83,14 +69,4 @@ technique BasicColorDrawing
 		PixelShader = compile PS_SHADERMODEL MainPS();
 	}
 };
-
-technique SecondaryColorDrawing
-{
-	pass P0
-	{
-		VertexShader = compile VS_SHADERMODEL MainVS();
-		PixelShader = compile PS_SHADERMODEL SecondaryPS();
-	}
-};
-
 

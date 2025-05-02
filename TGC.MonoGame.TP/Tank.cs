@@ -35,8 +35,6 @@ public class Tank{
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
         Texture = content.Load<Texture2D>(ContentFolderTextures + "hullA");
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
-        Effect.Parameters["Texture"].SetValue(Texture);
-        Effect.Parameters["Texture2"]?.SetValue(TreadmillTexture);
         foreach (var mesh in Model.Meshes)
         {
             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
@@ -123,18 +121,18 @@ public class Tank{
                 else if (Model.Meshes[11] == mesh)
                     effect.Parameters["World"].SetValue(World3 * World);
 
-
                 //effect.EnableDefaultLighting();
             }
-
+            
             foreach (var meshPart in mesh.MeshParts){
-                meshPart.Effect.CurrentTechnique = meshPart.Effect.Techniques[0];
+                
                 graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
                 graphicsDevice.Indices = meshPart.IndexBuffer;
-                if (Model.Meshes[12] == mesh || Model.Meshes[1] == mesh)
-                    meshPart.Effect.CurrentTechnique = meshPart.Effect.Techniques[1];
+                if (Model.Meshes[12] != mesh && Model.Meshes[1] != mesh)
+                    meshPart.Effect.Parameters["Texture"].SetValue(Texture);
+                else
+                    meshPart.Effect.Parameters["Texture"].SetValue(TreadmillTexture);
 
-                
                 foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
                     effectPass.Apply();
                     graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,meshPart.VertexOffset, meshPart.StartIndex,meshPart.PrimitiveCount);
