@@ -100,7 +100,7 @@ namespace TGC.MonoGame.TP
             
             tanque.Update(gameTime);
             //Para posicionar la camara atras
-            View = Matrix.CreateLookAt(tanque._position - tanque._rotation*10 + new Vector3(0,3,0), tanque._position, Vector3.Up);
+            View = Matrix.CreateLookAt(tanque._position  - tanque._rotation*10 + new Vector3(0,3,0), tanque._position, Vector3.Up);
             //Para ver mas de lejos descomentar la linea de abajo 
             //View = Matrix.CreateLookAt(tanque._position - tanque._rotation*50 + new Vector3(0,15,0), tanque._position, Vector3.Up);
 
