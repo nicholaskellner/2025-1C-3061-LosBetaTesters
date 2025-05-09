@@ -125,7 +125,6 @@ namespace TGC.MonoGame.TP
             }
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
 
-            shell.Draw(Matrix.CreateScale(0.001f) * Matrix.CreateRotationY(MathHelper.ToRadians(90)) * Matrix.CreateTranslation(tanque._position + new Vector3(0,3f,-8f)),View,Projection);
         }
         protected override void UnloadContent()
         {

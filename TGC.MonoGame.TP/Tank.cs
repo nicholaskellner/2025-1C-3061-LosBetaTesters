@@ -8,12 +8,15 @@ public class Tank{
     public const string ContentFolderEffects = "Effects/";
     public const string ContentFolderTextures = "Models/textures_mod/";
     private Model Model { get; set; }
+    private Model ShellModel { get; set; }
     private Effect Effect { get; set; }
+    private Effect ShellEffect { get; set; }
     private Texture2D Texture;
     private Texture2D TreadmillTexture;
     public Vector3 _rotation { get; set; } = Vector3.Forward;
     public Vector3 turretRotation { get; set; } = Vector3.Forward;
     private GraphicsDevice graphicsDevice;
+    private ContentManager content;
     private float elapsedTime = 0;
 
     private float yaw = 0;
@@ -35,14 +38,18 @@ public class Tank{
 
     private ModelBone[] rightWheels = new ModelBone[8];
     private Matrix[] rightWheelsTransforms = new Matrix[8];
+    private Shell shell = null;
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
         this.graphicsDevice = graphicsDevice;
+        this.content = content;
         //Cree esta porque viene mirando para arriba el tanque.
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
         Texture = content.Load<Texture2D>(ContentFolderTextures + "hullA");
+        ShellModel = content.Load<Model>(ContentFolder3D + "shell");
+        ShellEffect = content.Load<Effect>(ContentFolderEffects + "ShaderShell");
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
         foreach (var mesh in Model.Meshes)
         {
@@ -110,7 +117,11 @@ public class Tank{
             }
             _position += _rotation*0.015f;
         }
-
+        //Se agrego para probar la bala
+        if (Keyboard.GetState().IsKeyDown(Keys.K))
+        {
+            shell = new Shell(ShellModel,ShellEffect,_position + _rotation*10,_rotation+new Vector3(0,turret_pitch*2f,0));
+        }
         if (Mouse.GetState().X > 910)
         {
             turret_yaw -= elapsedTime * 0.1f;
@@ -136,6 +147,8 @@ public class Tank{
         wheelRotationLeft += speed * elapsedTime;
         World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0,1f,0);
         Mouse.SetPosition(910,490);
+        if(shell !=null)
+            shell.Update(gameTime);
     }
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
@@ -178,5 +191,7 @@ public class Tank{
                 }
             }
         }
+        if(shell !=null)
+            shell.Draw(View,Projection);
     }
 }
