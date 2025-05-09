@@ -48,6 +48,7 @@ namespace TGC.MonoGame.TP
         private Model grass;
 
         private Model rock;
+        private Model shell;
 
         private Model tree;
         private Tank tanque;
@@ -85,6 +86,7 @@ namespace TGC.MonoGame.TP
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
             rock = Content.Load<Model>(ContentFolder3D + "rockA");
             tree = Content.Load<Model>(ContentFolder3D + "tree");
+            shell = Content.Load<Model>(ContentFolder3D + "shell");
     
             tanque = new Tank(Content, GraphicsDevice);
             base.LoadContent();
@@ -122,6 +124,8 @@ namespace TGC.MonoGame.TP
                 tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
+
+            shell.Draw(Matrix.CreateScale(0.001f) * Matrix.CreateRotationY(MathHelper.ToRadians(90)) * Matrix.CreateTranslation(tanque._position + new Vector3(0,3f,-8f)),View,Projection);
         }
         protected override void UnloadContent()
         {

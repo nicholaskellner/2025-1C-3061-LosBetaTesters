@@ -12,11 +12,13 @@ public class Tank{
     private Texture2D Texture;
     private Texture2D TreadmillTexture;
     public Vector3 _rotation { get; set; } = Vector3.Forward;
+    public Vector3 turretRotation { get; set; } = Vector3.Forward;
     private GraphicsDevice graphicsDevice;
     private float elapsedTime = 0;
 
     private float yaw = 0;
     private float turret_yaw = 0;
+    private float turret_pitch = 0;
     private float speed = 0;
     private float rotationSpeed = 0.2f;
 
@@ -111,11 +113,23 @@ public class Tank{
 
         if (Mouse.GetState().X > 910)
         {
-            turret_yaw -= elapsedTime;
+            turret_yaw -= elapsedTime * 0.1f;
+            turretRotation = Vector3.Transform(turretRotation,Matrix.CreateRotationY(-elapsedTime * 0.1f));
         }
-        if (Mouse.GetState().X < 910)
+        else if (Mouse.GetState().X < 910)
         {
-            turret_yaw += elapsedTime;
+            turret_yaw += elapsedTime * 0.1f;
+            turretRotation = Vector3.Transform(turretRotation,Matrix.CreateRotationY(elapsedTime * 0.1f));
+        }
+        if (Mouse.GetState().Y > 490)
+        {
+            if(turret_pitch < 0.2f)
+                turret_pitch += elapsedTime * 0.1f;
+        }
+        else if (Mouse.GetState().Y < 490)
+        {
+            if(turret_pitch > -0.2f)
+                turret_pitch -= elapsedTime * 0.1f;
         }
         
         wheelRotationRight += speed * elapsedTime;
@@ -136,7 +150,7 @@ public class Tank{
         int indiceHueso = Model.Bones["Turret"].Index;
         _boneTransforms[indiceHueso] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[indiceHueso];
         int indiceCannon = Model.Bones["Cannon"].Index;
-        _boneTransforms[indiceCannon] = cannonRepo * Matrix.CreateRotationZ(turret_yaw) *  Matrix.CreateTranslation(-0.08f,1.3f,-0.3f) * _boneTransforms[indiceCannon];
+        _boneTransforms[indiceCannon] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateTranslation(-0.08f,1.3f,-0.3f) * _boneTransforms[indiceCannon];
 
         foreach (var mesh in Model.Meshes)
         {
