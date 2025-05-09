@@ -190,7 +190,7 @@
 /processorParam:TextureFormat=Compressed
 /build:Models/T90.fbx
 
-#begin Models/textures_mod/hullA.jpg
+#begin Models/textures_mod/hullA.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -200,7 +200,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Models/textures_mod/hullA.jpg
+/build:Models/textures_mod/hullA.png
 
 #begin Models/textures_mod/hullB.jpg
 /importer:TextureImporter

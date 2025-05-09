@@ -11,7 +11,7 @@ public class Tank{
     private Effect Effect { get; set; }
     private Texture2D Texture;
     private Texture2D TreadmillTexture;
-    public Vector3 _rotation { get; set; }
+    public Vector3 _rotation { get; set; } = Vector3.Forward;
     private GraphicsDevice graphicsDevice;
     private float elapsedTime = 0;
 
@@ -24,20 +24,20 @@ public class Tank{
     private float wheelRotationLeft = 0;
     public Vector3 _position = Vector3.Zero;
 
-    private Matrix localRotation;
-
     private Matrix World { get; set; }
-    private Matrix World2;
-    private Matrix World3;
-    private Matrix World4;
+    private Matrix[] _boneTransforms;
+    private Matrix cannonRepo = Matrix.CreateTranslation(0.08f,-1.3f,0.3f);
 
+    private ModelBone[] leftWheels = new ModelBone[8];
+    private Matrix[] leftWheelsTransforms = new Matrix[8];
+
+    private ModelBone[] rightWheels = new ModelBone[8];
+    private Matrix[] rightWheelsTransforms = new Matrix[8];
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
         this.graphicsDevice = graphicsDevice;
         //Cree esta porque viene mirando para arriba el tanque.
-        localRotation = Matrix.Identity * Matrix.CreateRotationX(MathHelper.ToRadians(-90)) * Matrix.CreateRotationY(MathHelper.ToRadians(90));
-        _rotation = Vector3.Transform(Vector3.Up,localRotation);
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
         Texture = content.Load<Texture2D>(ContentFolderTextures + "hullA");
@@ -50,6 +50,15 @@ public class Tank{
                 meshPart.Effect = Effect;
             }
         }
+        _boneTransforms = new Matrix[Model.Bones.Count];
+        for(var i = 0;i<8;i++){
+            rightWheels[i] = Model.Bones["Wheel"+(i+1)];
+            rightWheelsTransforms[i] = Model.Bones["Wheel"+(i+1)].Transform;
+            leftWheels[i] = Model.Bones["Wheel"+(i+9)];
+            leftWheelsTransforms[i] = Model.Bones["Wheel"+(i+9)].Transform;
+        }
+        
+
     }
 
     public void Update(GameTime gameTime)
@@ -74,13 +83,13 @@ public class Tank{
             if (speed < 0){
                 yaw = yaw - rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
-                wheelRotationRight += elapsedTime;
+                wheelRotationRight -= elapsedTime;
             }
                 
             else{
                 yaw = yaw + rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(rotationSpeed * elapsedTime));
-                wheelRotationRight -= elapsedTime;
+                wheelRotationRight += elapsedTime;
             }
             _position += _rotation*0.01f * elapsedTime;
         }
@@ -89,13 +98,13 @@ public class Tank{
             if (speed < 0){
                 yaw = yaw + rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(rotationSpeed * elapsedTime));
-                wheelRotationLeft += elapsedTime;
+                wheelRotationLeft -= elapsedTime;
             }
                 
             else{
                 yaw = yaw - rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
-                wheelRotationLeft -= elapsedTime;
+                wheelRotationLeft += elapsedTime;
             }
             _position += _rotation*0.015f;
         }
@@ -109,51 +118,46 @@ public class Tank{
             turret_yaw += elapsedTime;
         }
         
-        wheelRotationRight -= speed * elapsedTime;
-        wheelRotationLeft -= speed * elapsedTime;
-        World = localRotation * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
-        World2 = Matrix.Identity * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateRotationZ(MathHelper.ToRadians(180));
-        //El World3 es para el cañon que lleva un offset
-        World3 = Matrix.Identity *  Matrix.CreateTranslation(0.07f,-1.3f,0.3f) * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateRotationZ(MathHelper.ToRadians(180));
-        World4 = Matrix.Identity  * Matrix.CreateRotationX(wheelRotationRight) * Matrix.CreateTranslation(-0.1f,0.62f,0);//Matrix.CreateTranslation(Vector3.Transform(_rotation, Matrix.CreateRotationX(MathHelper.ToRadians(90)))*1.5f);
+        wheelRotationRight += speed * elapsedTime;
+        wheelRotationLeft += speed * elapsedTime;
+        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0,1f,0);
         Mouse.SetPosition(910,490);
     }
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
     {
+        var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
+        var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
+        for(var i = 0;i<8;i++){
+            leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
+            rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
+        }
+        Model.CopyAbsoluteBoneTransformsTo(_boneTransforms);
+        int indiceHueso = Model.Bones["Turret"].Index;
+        _boneTransforms[indiceHueso] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[indiceHueso];
+        int indiceCannon = Model.Bones["Cannon"].Index;
+        _boneTransforms[indiceCannon] = cannonRepo * Matrix.CreateRotationZ(turret_yaw) *  Matrix.CreateTranslation(-0.08f,1.3f,-0.3f) * _boneTransforms[indiceCannon];
+
         foreach (var mesh in Model.Meshes)
         {
-            
             foreach (var effect in mesh.Effects)
             {
-                effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
+                effect.Parameters["World"].SetValue(_boneTransforms[mesh.ParentBone.Index] * World);
                 effect.Parameters["View"].SetValue(View);
                 effect.Parameters["Projection"].SetValue(Projection);
-                if (Model.Meshes[10] == mesh)
-                    effect.Parameters["World"].SetValue(World2 * World);
-                else if (Model.Meshes[11] == mesh)
-                    effect.Parameters["World"].SetValue(World3 * World);
-                else if (Model.Meshes[4] == mesh)
-                    effect.Parameters["World"].SetValue(Matrix.CreateRotationX(wheelRotationRight) * Matrix.CreateTranslation(0,5.75f,0) * mesh.ParentBone.Transform * World);
-                else if (Model.Meshes[2] == mesh)
-                    effect.Parameters["World"].SetValue(Matrix.CreateRotationX(wheelRotationRight) * Matrix.CreateTranslation(-0.1f,-4.85f,0.03f) * mesh.ParentBone.Transform * World);
-                else if (Model.Meshes[3] == mesh || Model.Meshes[5] == mesh || Model.Meshes[6] == mesh || Model.Meshes[7] == mesh || Model.Meshes[8] == mesh || Model.Meshes[9] == mesh)
-                    effect.Parameters["World"].SetValue(World4 * mesh.ParentBone.Transform * World);
-                else if (Model.Meshes[16] == mesh || Model.Meshes[13] == mesh || Model.Meshes[14] == mesh || Model.Meshes[15] == mesh || Model.Meshes[18] == mesh || Model.Meshes[17] == mesh || Model.Meshes[19] == mesh || Model.Meshes[20] == mesh)
-                    effect.Parameters["World"].SetValue(Matrix.CreateRotationX(wheelRotationLeft) * mesh.ParentBone.Transform * World);
+                effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f,1f));
 
+                effect.Parameters["KAmbient"].SetValue(0.5f);
                 //effect.EnableDefaultLighting();
             }
             
             foreach (var meshPart in mesh.MeshParts){
-                
                 graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
                 graphicsDevice.Indices = meshPart.IndexBuffer;
-                if (Model.Meshes[12] != mesh && Model.Meshes[1] != mesh)
-                    meshPart.Effect.Parameters["Texture"].SetValue(Texture);
-                else
+                if (Model.Meshes["Treadmill2"] == mesh || Model.Meshes["Treadmill1"] == mesh)
                     meshPart.Effect.Parameters["Texture"].SetValue(TreadmillTexture);
-
+                else
+                    meshPart.Effect.Parameters["Texture"].SetValue(Texture);
                 foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
                     effectPass.Apply();
                     graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,meshPart.VertexOffset, meshPart.StartIndex,meshPart.PrimitiveCount);

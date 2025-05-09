@@ -100,7 +100,7 @@ namespace TGC.MonoGame.TP
             
             tanque.Update(gameTime);
             //Para posicionar la camara atras
-            View = Matrix.CreateLookAt(tanque._position  - tanque._rotation*10 + new Vector3(0,3,0), tanque._position, Vector3.Up);
+            View = Matrix.CreateLookAt(tanque._position  - tanque._rotation*20 + new Vector3(0,7,0), tanque._position, Vector3.Up);
             //Para ver mas de lejos descomentar la linea de abajo 
             //View = Matrix.CreateLookAt(tanque._position - tanque._rotation*50 + new Vector3(0,15,0), tanque._position, Vector3.Up);
 
@@ -110,14 +110,16 @@ namespace TGC.MonoGame.TP
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
+            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+            GraphicsDevice.BlendState = BlendState.Opaque;
             tanque.Draw(GraphicsDevice, View, Projection);
             for(int i = 0; i < 50; i++)
             {
-                rock.Draw(Matrix.CreateScale(trees[i].Z*0.7f) * Matrix.CreateRotationY(trees[i].Z*5) *Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
+                rock.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateRotationY(trees[i].Z*5) *Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
             for(int i = 50; i < 250; i++)
             {
-                tree.Draw(Matrix.CreateScale(trees[i].Z*0.7f) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
+                tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
             grass.Draw(Matrix.CreateScale(100,0,100) * Matrix.CreateTranslation(1,-2,1),View,Projection);
         }

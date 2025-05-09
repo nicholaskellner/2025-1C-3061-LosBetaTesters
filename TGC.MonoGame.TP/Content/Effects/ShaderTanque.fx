@@ -19,6 +19,10 @@ uniform float4x4 Projection;
 
 float Time = 0;
 
+float3 ambientColor;
+float KAmbient; 
+float3 lightPosition;
+
 Texture2D Texture;
 
 sampler2D TextureSampler = sampler_state
@@ -58,7 +62,8 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
 	float4 texCol = tex2D(TextureSampler, input.TextureCoordinate);
-	return texCol;
+	float4 color = float4(saturate(ambientColor * KAmbient) * texCol.rgb,texCol.a);
+	return color;
 }
 
 technique BasicColorDrawing
