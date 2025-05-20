@@ -3,7 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Content;
 using System;
-public class Tank{
+public class Tank
+{
     public const string ContentFolder3D = "Models/";
     public const string ContentFolderEffects = "Effects/";
     public const string ContentFolderTextures = "Models/textures_mod/";
@@ -31,7 +32,7 @@ public class Tank{
 
     private Matrix World { get; set; }
     private Matrix[] _boneTransforms;
-    private Matrix cannonRepo = Matrix.CreateTranslation(0.08f,-1.3f,0.3f);
+    private Matrix cannonRepo = Matrix.CreateTranslation(0.08f, -1.3f, 0.3f);
 
     private ModelBone[] leftWheels = new ModelBone[8];
     private Matrix[] leftWheelsTransforms = new Matrix[8];
@@ -39,6 +40,13 @@ public class Tank{
     private ModelBone[] rightWheels = new ModelBone[8];
     private Matrix[] rightWheelsTransforms = new Matrix[8];
     private Shell shell = null;
+
+    public Vector3 PreviousPosition { get; private set; }
+    public void RevertPosition() => _position = PreviousPosition;
+    public BoundingBox BoundingBox => new BoundingBox(
+        _position - new Vector3(1f, 0f, 1f),
+        _position + new Vector3(1f, 2f, 1f)
+    );
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
@@ -60,18 +68,20 @@ public class Tank{
             }
         }
         _boneTransforms = new Matrix[Model.Bones.Count];
-        for(var i = 0;i<8;i++){
-            rightWheels[i] = Model.Bones["Wheel"+(i+1)];
-            rightWheelsTransforms[i] = Model.Bones["Wheel"+(i+1)].Transform;
-            leftWheels[i] = Model.Bones["Wheel"+(i+9)];
-            leftWheelsTransforms[i] = Model.Bones["Wheel"+(i+9)].Transform;
+        for (var i = 0; i < 8; i++)
+        {
+            rightWheels[i] = Model.Bones["Wheel" + (i + 1)];
+            rightWheelsTransforms[i] = Model.Bones["Wheel" + (i + 1)].Transform;
+            leftWheels[i] = Model.Bones["Wheel" + (i + 9)];
+            leftWheelsTransforms[i] = Model.Bones["Wheel" + (i + 9)].Transform;
         }
-        
+
 
     }
 
     public void Update(GameTime gameTime)
     {
+        PreviousPosition = _position;
         elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
         //Falta agregar acceleracion si es que los tanques tienen
         speed = 0;
@@ -89,65 +99,69 @@ public class Tank{
 
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            if (speed < 0){
+            if (speed < 0)
+            {
                 yaw = yaw - rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
+                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
                 wheelRotationRight -= elapsedTime;
             }
-                
-            else{
+
+            else
+            {
                 yaw = yaw + rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(rotationSpeed * elapsedTime));
+                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
                 wheelRotationRight += elapsedTime;
             }
-            _position += _rotation*0.01f * elapsedTime;
+            _position += _rotation * 0.01f * elapsedTime;
         }
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            if (speed < 0){
+            if (speed < 0)
+            {
                 yaw = yaw + rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(rotationSpeed * elapsedTime));
+                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
                 wheelRotationLeft -= elapsedTime;
             }
-                
-            else{
+
+            else
+            {
                 yaw = yaw - rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation,Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
+                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
                 wheelRotationLeft += elapsedTime;
             }
-            _position += _rotation*0.015f;
+            _position += _rotation * 0.015f;
         }
         //Se agrego para probar la bala
         if (Keyboard.GetState().IsKeyDown(Keys.K))
         {
-            shell = new Shell(ShellModel,ShellEffect,_position + _rotation*10,_rotation+new Vector3(0,turret_pitch*2f,0));
+            shell = new Shell(ShellModel, ShellEffect, _position + _rotation * 10, _rotation + new Vector3(0, turret_pitch * 2f, 0));
         }
         if (Mouse.GetState().X > 910)
         {
             turret_yaw -= elapsedTime * 0.1f;
-            turretRotation = Vector3.Transform(turretRotation,Matrix.CreateRotationY(-elapsedTime * 0.1f));
+            turretRotation = Vector3.Transform(turretRotation, Matrix.CreateRotationY(-elapsedTime * 0.1f));
         }
         else if (Mouse.GetState().X < 910)
         {
             turret_yaw += elapsedTime * 0.1f;
-            turretRotation = Vector3.Transform(turretRotation,Matrix.CreateRotationY(elapsedTime * 0.1f));
+            turretRotation = Vector3.Transform(turretRotation, Matrix.CreateRotationY(elapsedTime * 0.1f));
         }
         if (Mouse.GetState().Y > 490)
         {
-            if(turret_pitch < 0.2f)
+            if (turret_pitch < 0.2f)
                 turret_pitch += elapsedTime * 0.1f;
         }
         else if (Mouse.GetState().Y < 490)
         {
-            if(turret_pitch > -0.2f)
+            if (turret_pitch > -0.2f)
                 turret_pitch -= elapsedTime * 0.1f;
         }
-        
+
         wheelRotationRight += speed * elapsedTime;
         wheelRotationLeft += speed * elapsedTime;
-        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0,1f,0);
-        Mouse.SetPosition(910,490);
-        if(shell !=null)
+        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
+        Mouse.SetPosition(910, 490);
+        if (shell != null)
             shell.Update(gameTime);
     }
 
@@ -155,7 +169,8 @@ public class Tank{
     {
         var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
         var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
-        for(var i = 0;i<8;i++){
+        for (var i = 0; i < 8; i++)
+        {
             leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
             rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
         }
@@ -163,7 +178,7 @@ public class Tank{
         int indiceHueso = Model.Bones["Turret"].Index;
         _boneTransforms[indiceHueso] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[indiceHueso];
         int indiceCannon = Model.Bones["Cannon"].Index;
-        _boneTransforms[indiceCannon] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateTranslation(-0.08f,1.3f,-0.3f) * _boneTransforms[indiceCannon];
+        _boneTransforms[indiceCannon] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[indiceCannon];
 
         foreach (var mesh in Model.Meshes)
         {
@@ -172,26 +187,30 @@ public class Tank{
                 effect.Parameters["World"].SetValue(_boneTransforms[mesh.ParentBone.Index] * World);
                 effect.Parameters["View"].SetValue(View);
                 effect.Parameters["Projection"].SetValue(Projection);
-                effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f,1f));
+                effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
 
                 effect.Parameters["KAmbient"].SetValue(0.5f);
                 //effect.EnableDefaultLighting();
             }
-            
-            foreach (var meshPart in mesh.MeshParts){
+
+            foreach (var meshPart in mesh.MeshParts)
+            {
                 graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
                 graphicsDevice.Indices = meshPart.IndexBuffer;
                 if (Model.Meshes["Treadmill2"] == mesh || Model.Meshes["Treadmill1"] == mesh)
                     meshPart.Effect.Parameters["Texture"].SetValue(TreadmillTexture);
                 else
                     meshPart.Effect.Parameters["Texture"].SetValue(Texture);
-                foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes){
+                foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes)
+                {
                     effectPass.Apply();
-                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,meshPart.VertexOffset, meshPart.StartIndex,meshPart.PrimitiveCount);
+                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, meshPart.VertexOffset, meshPart.StartIndex, meshPart.PrimitiveCount);
                 }
             }
         }
-        if(shell !=null)
-            shell.Draw(View,Projection);
+        if (shell != null)
+            shell.Draw(View, Projection);
     }
+    
+    
 }
