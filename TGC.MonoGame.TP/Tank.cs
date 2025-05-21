@@ -1,8 +1,9 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Content;
 using System;
+using System.Collections.Generic;
 public class Tank
 {
     public const string ContentFolder3D = "Models/";
@@ -32,7 +33,8 @@ public class Tank
 
     private Matrix World { get; set; }
     private Matrix[] _boneTransforms;
-    private Matrix cannonRepo = Matrix.CreateTranslation(0.08f, -1.3f, 0.3f);
+    Matrix cannonRepo = Matrix.CreateTranslation(0f, 0.2f, 1.2f); // 1.2f adelante, 0.2f arriba
+
 
     private ModelBone[] leftWheels = new ModelBone[8];
     private Matrix[] leftWheelsTransforms = new Matrix[8];
@@ -48,10 +50,23 @@ public class Tank
         _position + new Vector3(1f, 2f, 1f)
     );
 
+    //props para disparar
+    private ModelBone cannonBone;
+    private Matrix cannonBaseTransform;
+    
+    private readonly Vector3 cannonMuzzleOffset = new Vector3(0f, 0f, 1.5f);
+
+
+    private float reloadTime = 2.0f; // tiempo de recarga en segundos
+    private float reloadTimer = 0.0f;
+    private List<Shell> shells = new List<Shell>(); // lista de balas disparadas
+    
+
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
         this.graphicsDevice = graphicsDevice;
         this.content = content;
+        
         //Cree esta porque viene mirando para arriba el tanque.
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
@@ -59,6 +74,10 @@ public class Tank
         ShellModel = content.Load<Model>(ContentFolder3D + "shell");
         ShellEffect = content.Load<Effect>(ContentFolderEffects + "ShaderShell");
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
+
+
+        cannonBone = Model.Bones["Cannon"]; 
+        cannonBaseTransform = cannonBone.Transform;
         foreach (var mesh in Model.Meshes)
         {
             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
@@ -75,6 +94,7 @@ public class Tank
             leftWheels[i] = Model.Bones["Wheel" + (i + 9)];
             leftWheelsTransforms[i] = Model.Bones["Wheel" + (i + 9)].Transform;
         }
+        
 
 
     }
@@ -114,6 +134,7 @@ public class Tank
             }
             _position += _rotation * 0.01f * elapsedTime;
         }
+
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
             if (speed < 0)
@@ -132,10 +153,12 @@ public class Tank
             _position += _rotation * 0.015f;
         }
         //Se agrego para probar la bala
-        if (Keyboard.GetState().IsKeyDown(Keys.K))
+        /*if (Keyboard.GetState().IsKeyDown(Keys.K))
         {
             shell = new Shell(ShellModel, ShellEffect, _position + _rotation * 10, _rotation + new Vector3(0, turret_pitch * 2f, 0));
         }
+        */
+
         if (Mouse.GetState().X > 910)
         {
             turret_yaw -= elapsedTime * 0.1f;
@@ -146,6 +169,7 @@ public class Tank
             turret_yaw += elapsedTime * 0.1f;
             turretRotation = Vector3.Transform(turretRotation, Matrix.CreateRotationY(elapsedTime * 0.1f));
         }
+
         if (Mouse.GetState().Y > 490)
         {
             if (turret_pitch < 0.2f)
@@ -161,8 +185,59 @@ public class Tank
         wheelRotationLeft += speed * elapsedTime;
         World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
         Mouse.SetPosition(910, 490);
-        if (shell != null)
+        
+        // Actualizar el temporizador de recarga
+        reloadTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0f)
+        {
+
+
+
+            var ms = Mouse.GetState();
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (ms.X > 910)      turret_yaw   -= dt * 0.1f;
+            else if (ms.X < 910) turret_yaw   += dt * 0.1f;
+
+            if (ms.Y > 490 && turret_pitch <  0.2f) turret_pitch += dt * 0.1f;
+            else if (ms.Y < 490 && turret_pitch > -0.2f) turret_pitch -= dt * 0.1f;
+
+            Mouse.SetPosition(910, 490);
+
+    
+            Matrix mYaw   = Matrix.CreateRotationY( turret_yaw   );
+            Matrix mPitch = Matrix.CreateRotationX( -turret_pitch );
+            turretRotation = Vector3.Transform(Vector3.Forward, mPitch * mYaw);
+            turretRotation.Normalize();
+
+    
+            reloadTimer -= dt;
+            if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0 )
+            {
+                
+                Vector3 shellPos = _position
+                                 + turretRotation * 10f + new Vector3(0, 3f, 0); 
+
+               
+                Vector3 shellDir = turretRotation;
+
+                // Crear la shell
+                shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
+                reloadTimer = reloadTime;
+            }
+
+            reloadTimer = reloadTime;
+        }
+
+        // Actualizar balas activas
+        foreach (var shell in shells)
+        {
             shell.Update(gameTime);
+        }
+
+        //shells.RemoveAll(shell => shell.isExpired);
+
     }
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
@@ -210,6 +285,13 @@ public class Tank
         }
         if (shell != null)
             shell.Draw(View, Projection);
+
+        foreach (var shell in shells)
+        {
+            shell.Draw(View, Projection);
+        }
+
+
     }
     
     

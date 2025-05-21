@@ -9,40 +9,44 @@ public class Shell{
     public const string ContentFolderTextures = "Models/textures_mod/";
     private Model Model { get; set; }
     private Effect Effect { get; set; }
-    public Vector3 _direction { get; set; } = Vector3.Forward;
+    public Vector3 _direction;
     private GraphicsDevice graphicsDevice;
-    private float elapsedTime = 0;
-
-    private float yaw = 0;
-    private float speed = 0;
-    private float rotationSpeed = 0.2f;
+    
+    
     public Vector3 _position;
-
+    private float gravity = -9.8f; 
     private Matrix World { get; set; }
-
-
+    private Vector3 velocity;
+    
+    public bool isExpired = false;
+    private float lifetime = 5f; // Tiempo desde que se detiene
+    private float currentSpeed = 10f; 
+    private float speed = 30f;
     public Shell(Model model, Effect effect, Vector3 position, Vector3 direction)
     {
-        this.Model = model;
-        this.Effect = effect;
-        _position = new Vector3(position.X,position.Y+3f,position.Z);
-        _direction = Vector3.Transform(new Vector3(direction.Z,direction.Y,direction.X),Matrix.CreateRotationY(MathHelper.ToRadians(-90)));
+        Model = model;
+        Effect = effect;
+        _position = position;
+        direction.Normalize();
+        velocity = direction * speed;
+
         foreach (var mesh in Model.Meshes)
-        {
-            // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-            foreach (var meshPart in mesh.MeshParts)
-            {
-                meshPart.Effect = Effect;
-            }
-        }
+            foreach (var part in mesh.MeshParts)
+                part.Effect = Effect;
     }
 
     public void Update(GameTime gameTime)
     {
-        elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
-        //Falta agregar acceleracion si es que los tanques tienen
-        speed = 0;
-        World = Matrix.CreateScale(0.1f) * Matrix.CreateLookAt(Vector3.Zero,_direction,Vector3.Up) * Matrix.CreateTranslation(_position);
+        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        
+        _position += velocity * dt;
+        
+        lifetime -= dt;
+        if (lifetime <= 0) isExpired = true;
+        
+        Vector3 forward = Vector3.Normalize(velocity);
+        World = Matrix.CreateScale(0.1f)
+              * Matrix.CreateWorld(_position, forward, Vector3.Up);
     }
 
     public void Draw(Matrix View, Matrix Projection)
