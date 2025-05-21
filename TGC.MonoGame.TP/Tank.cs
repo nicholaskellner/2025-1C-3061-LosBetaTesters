@@ -49,24 +49,26 @@ public class Tank
         _position - new Vector3(1f, 0f, 1f),
         _position + new Vector3(1f, 2f, 1f)
     );
+    public List<BoundingBox> MeshBoundingBoxes { get; private set; } = new();
+    private List<BoundingBox> originalMeshBoundingBoxes = new();
 
     //props para disparar
     private ModelBone cannonBone;
     private Matrix cannonBaseTransform;
-    
+
     private readonly Vector3 cannonMuzzleOffset = new Vector3(0f, 0f, 1.5f);
 
 
     private float reloadTime = 2.0f; // tiempo de recarga en segundos
     private float reloadTimer = 0.0f;
     private List<Shell> shells = new List<Shell>(); // lista de balas disparadas
-    
+
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
         this.graphicsDevice = graphicsDevice;
         this.content = content;
-        
+
         //Cree esta porque viene mirando para arriba el tanque.
         Model = content.Load<Model>(ContentFolder3D + "T90");
         Effect = content.Load<Effect>(ContentFolderEffects + "ShaderTanque");
@@ -76,7 +78,7 @@ public class Tank
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
 
 
-        cannonBone = Model.Bones["Cannon"]; 
+        cannonBone = Model.Bones["Cannon"];
         cannonBaseTransform = cannonBone.Transform;
         foreach (var mesh in Model.Meshes)
         {
@@ -94,9 +96,7 @@ public class Tank
             leftWheels[i] = Model.Bones["Wheel" + (i + 9)];
             leftWheelsTransforms[i] = Model.Bones["Wheel" + (i + 9)].Transform;
         }
-        
-
-
+        GenerateOriginalMeshBoundingBoxes();
     }
 
     public void Update(GameTime gameTime)
@@ -185,7 +185,7 @@ public class Tank
         wheelRotationLeft += speed * elapsedTime;
         World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
         Mouse.SetPosition(910, 490);
-        
+
         // Actualizar el temporizador de recarga
         reloadTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -197,29 +197,29 @@ public class Tank
             var ms = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (ms.X > 910)      turret_yaw   -= dt * 0.1f;
-            else if (ms.X < 910) turret_yaw   += dt * 0.1f;
+            if (ms.X > 910) turret_yaw -= dt * 0.1f;
+            else if (ms.X < 910) turret_yaw += dt * 0.1f;
 
-            if (ms.Y > 490 && turret_pitch <  0.2f) turret_pitch += dt * 0.1f;
+            if (ms.Y > 490 && turret_pitch < 0.2f) turret_pitch += dt * 0.1f;
             else if (ms.Y < 490 && turret_pitch > -0.2f) turret_pitch -= dt * 0.1f;
 
             Mouse.SetPosition(910, 490);
 
-    
-            Matrix mYaw   = Matrix.CreateRotationY( turret_yaw   );
-            Matrix mPitch = Matrix.CreateRotationX( -turret_pitch );
+
+            Matrix mYaw = Matrix.CreateRotationY(turret_yaw);
+            Matrix mPitch = Matrix.CreateRotationX(-turret_pitch);
             turretRotation = Vector3.Transform(Vector3.Forward, mPitch * mYaw);
             turretRotation.Normalize();
 
-    
-            reloadTimer -= dt;
-            if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0 )
-            {
-                
-                Vector3 shellPos = _position
-                                 + turretRotation * 10f + new Vector3(0, 3f, 0); 
 
-               
+            reloadTimer -= dt;
+            if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0)
+            {
+
+                Vector3 shellPos = _position
+                                 + turretRotation * 10f + new Vector3(0, 3f, 0);
+
+
                 Vector3 shellDir = turretRotation;
 
                 // Crear la shell
@@ -235,6 +235,7 @@ public class Tank
         {
             shell.Update(gameTime);
         }
+        UpdateMeshBoundingBoxes();
 
         //shells.RemoveAll(shell => shell.isExpired);
 
@@ -292,6 +293,54 @@ public class Tank
         }
 
 
+    }
+    private void GenerateOriginalMeshBoundingBoxes()
+    {
+        foreach (var mesh in Model.Meshes)
+        {
+            var vertices = new List<Vector3>();
+
+            foreach (var part in mesh.MeshParts)
+            {
+                var vertexData = new VertexPositionNormalTexture[part.NumVertices];
+                part.VertexBuffer.GetData(part.VertexOffset * part.VertexBuffer.VertexDeclaration.VertexStride, vertexData, 0, part.NumVertices, part.VertexBuffer.VertexDeclaration.VertexStride);
+
+                vertices.AddRange(Array.ConvertAll(vertexData, v => v.Position));
+            }
+
+            if (vertices.Count > 0)
+                originalMeshBoundingBoxes.Add(BoundingBox.CreateFromPoints(vertices));
+            else
+                originalMeshBoundingBoxes.Add(new BoundingBox());
+        }
+    }
+
+    private void UpdateMeshBoundingBoxes()
+    {
+        MeshBoundingBoxes.Clear();
+        var boneTransforms = new Matrix[Model.Bones.Count];
+        Model.CopyAbsoluteBoneTransformsTo(boneTransforms);
+
+        for (int i = 0; i < Model.Meshes.Count; i++)
+        {
+            var mesh = Model.Meshes[i];
+            var originalBox = originalMeshBoundingBoxes[i];
+            var worldTransform = boneTransforms[mesh.ParentBone.Index] * World;
+
+            var transformedBox = TransformBoundingBox(originalBox, worldTransform);
+            MeshBoundingBoxes.Add(transformedBox);
+        }
+    }
+
+    private BoundingBox TransformBoundingBox(BoundingBox box, Matrix transform)
+    {
+        var corners = box.GetCorners();
+        var transformedCorners = new Vector3[corners.Length];
+
+        for (int i = 0; i < corners.Length; i++)
+            transformedCorners[i] = Vector3.Transform(corners[i], transform);
+
+        return BoundingBox.CreateFromPoints(transformedCorners);
     }
     
     

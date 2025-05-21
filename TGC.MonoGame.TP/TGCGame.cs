@@ -102,16 +102,17 @@ namespace TGC.MonoGame.TP
 
             tanque.Update(gameTime);
 
-            // Verificar colisiones y revertir movimiento si es necesario
-            foreach (var treeBox in TreeBoundingBoxes)
+          foreach (var meshBox in tanque.MeshBoundingBoxes)
             {
-                if (tanque.BoundingBox.Intersects(treeBox))
+                foreach (var treeBox in TreeBoundingBoxes)
                 {
-                    tanque.RevertPosition();
-                    break;
+                    if (meshBox.Intersects(treeBox))
+                    {
+                        tanque.RevertPosition();
+                        break;
+                    }
                 }
             }
-
             View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
 
             base.Update(gameTime);
