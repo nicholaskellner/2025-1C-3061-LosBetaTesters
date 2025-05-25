@@ -33,7 +33,7 @@ public class Tank
 
     private Matrix World { get; set; }
     private Matrix[] _boneTransforms;
-    Matrix cannonRepo = Matrix.CreateTranslation(0f, 0.2f, 1.2f); // 1.2f adelante, 0.2f arriba
+    private Matrix cannonRepo = Matrix.CreateTranslation(0.08f, -1.3f, 0.3f); // 1.2f adelante, 0.2f arriba
 
 
     private ModelBone[] leftWheels = new ModelBone[8];
@@ -121,14 +121,14 @@ public class Tank
         {
             if (speed < 0)
             {
-                yaw = yaw - rotationSpeed * elapsedTime;
+                yaw -= rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
                 wheelRotationRight -= elapsedTime;
             }
 
             else
             {
-                yaw = yaw + rotationSpeed * elapsedTime;
+                yaw += rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
                 wheelRotationRight += elapsedTime;
             }
@@ -139,46 +139,38 @@ public class Tank
         {
             if (speed < 0)
             {
-                yaw = yaw + rotationSpeed * elapsedTime;
+                yaw += rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
                 wheelRotationLeft -= elapsedTime;
             }
 
             else
             {
-                yaw = yaw - rotationSpeed * elapsedTime;
+                yaw -= rotationSpeed * elapsedTime;
                 _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
                 wheelRotationLeft += elapsedTime;
             }
             _position += _rotation * 0.015f;
         }
-        //Se agrego para probar la bala
-        /*if (Keyboard.GetState().IsKeyDown(Keys.K))
-        {
-            shell = new Shell(ShellModel, ShellEffect, _position + _rotation * 10, _rotation + new Vector3(0, turret_pitch * 2f, 0));
-        }
-        */
 
         if (Mouse.GetState().X > 910)
         {
             turret_yaw -= elapsedTime * 0.1f;
-            turretRotation = Vector3.Transform(turretRotation, Matrix.CreateRotationY(-elapsedTime * 0.1f));
         }
         else if (Mouse.GetState().X < 910)
         {
             turret_yaw += elapsedTime * 0.1f;
-            turretRotation = Vector3.Transform(turretRotation, Matrix.CreateRotationY(elapsedTime * 0.1f));
         }
 
         if (Mouse.GetState().Y > 490)
         {
-            if (turret_pitch < 0.2f)
-                turret_pitch += elapsedTime * 0.1f;
+            turret_pitch += elapsedTime * 0.1f;
+            turret_pitch = Math.Min(turret_pitch, 0.2f);
         }
         else if (Mouse.GetState().Y < 490)
         {
-            if (turret_pitch > -0.2f)
-                turret_pitch -= elapsedTime * 0.1f;
+            turret_pitch -= elapsedTime * 0.1f;
+            turret_pitch = Math.Max(turret_pitch, -0.2f);
         }
 
         wheelRotationRight += speed * elapsedTime;
@@ -191,42 +183,23 @@ public class Tank
 
         if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0f)
         {
-
-
-
             var ms = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            reloadTimer -= dt;
 
-            if (ms.X > 910) turret_yaw -= dt * 0.1f;
-            else if (ms.X < 910) turret_yaw += dt * 0.1f;
-
-            if (ms.Y > 490 && turret_pitch < 0.2f) turret_pitch += dt * 0.1f;
-            else if (ms.Y < 490 && turret_pitch > -0.2f) turret_pitch -= dt * 0.1f;
-
-            Mouse.SetPosition(910, 490);
-
-
-            Matrix mYaw = Matrix.CreateRotationY(turret_yaw);
+            Matrix mYaw = Matrix.CreateRotationY(turret_yaw + yaw);
             Matrix mPitch = Matrix.CreateRotationX(-turret_pitch);
             turretRotation = Vector3.Transform(Vector3.Forward, mPitch * mYaw);
             turretRotation.Normalize();
 
-
-            reloadTimer -= dt;
-            if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0)
-            {
-
-                Vector3 shellPos = _position
-                                 + turretRotation * 10f + new Vector3(0, 3f, 0);
+            Vector3 shellPos = _position
+                                + turretRotation * 12f + new Vector3(0, 1f, 0);
 
 
-                Vector3 shellDir = turretRotation;
+            Vector3 shellDir = turretRotation;
 
-                // Crear la shell
-                shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
-                reloadTimer = reloadTime;
-            }
-
+            // Crear la shell
+            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
             reloadTimer = reloadTime;
         }
 

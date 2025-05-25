@@ -19,7 +19,8 @@ uniform float4x4 Projection;
 
 float Time = 0;
 
-//float3 ambientColor;
+
+float4 shellColor;
 //float KAmbient; 
 //float3 lightPosition;
 
@@ -27,13 +28,12 @@ float Time = 0;
 struct VertexShaderInput
 {
 	float4 Position : POSITION0;
-	float3 TextureCoordinate : COLOR;
 };
 
 struct VertexShaderOutput
 {
     float4 Position : SV_Position0;
-	float3 TextureCoordinate : COLOR;
+	//float4 Color : COLOR;
 };
 
 VertexShaderOutput MainVS(in VertexShaderInput input)
@@ -46,13 +46,12 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     float4 viewPosition = mul(worldPosition, View);	
 	// View space to Projection space
     output.Position = mul(viewPosition, Projection);
-	output.TextureCoordinate = input.TextureCoordinate;
     return output;
 }
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    return float4(input.TextureCoordinate, 1);
+    return shellColor;
 }
 
 technique BasicColorDrawing

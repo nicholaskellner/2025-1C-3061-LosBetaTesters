@@ -4,15 +4,9 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Content;
 using System;
 public class Shell{
-    public const string ContentFolder3D = "Models/";
-    public const string ContentFolderEffects = "Effects/";
-    public const string ContentFolderTextures = "Models/textures_mod/";
     private Model Model { get; set; }
     private Effect Effect { get; set; }
     public Vector3 _direction;
-    private GraphicsDevice graphicsDevice;
-    
-    
     public Vector3 _position;
     private float gravity = -9.8f; 
     private Matrix World { get; set; }
@@ -58,9 +52,10 @@ public class Shell{
                 effect.Parameters["World"].SetValue(World);
                 effect.Parameters["View"].SetValue(View);
                 effect.Parameters["Projection"].SetValue(Projection);
-                effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f,1f));
+                //Lo setee asi porque el modelo no tiene color
+                effect.Parameters["shellColor"]?.SetValue(new Vector4(0.686f,0.608f,0.376f,1f));
 
-                effect.Parameters["KAmbient"]?.SetValue(0.5f);
+                //effect.Parameters["KAmbient"]?.SetValue(0.5f);
                 //effect.EnableDefaultLighting();
             }
             mesh.Draw();
