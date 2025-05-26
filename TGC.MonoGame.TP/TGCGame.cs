@@ -27,10 +27,10 @@ namespace TGC.MonoGame.TP
         {
             // Maneja la configuracion y la administracion del dispositivo grafico.
             Graphics = new GraphicsDeviceManager(this);
-            
+
             Graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
             Graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
-            
+
             // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
             // Carpeta raiz donde va a estar toda la Media.
             Content.RootDirectory = "Content";
@@ -54,13 +54,13 @@ namespace TGC.MonoGame.TP
         private Model tree;
         private Tank tanque;
 
-        
+
 
         protected override void Initialize()
         {
             var r = new Random();
             trees = new List<Vector3>();
-            for (int i = 0; i < 250; i++)
+            for (int i = 0; i < 75; i++)
             {
                 var x = r.NextSingle() * 200;
                 var y = r.NextSingle() * 200;
@@ -102,7 +102,7 @@ namespace TGC.MonoGame.TP
 
             tanque.Update(gameTime);
 
-          foreach (var meshBox in tanque.MeshBoundingBoxes)
+            foreach (var meshBox in tanque.MeshBoundingBoxes)
             {
                 foreach (var treeBox in TreeBoundingBoxes)
                 {
@@ -130,12 +130,15 @@ namespace TGC.MonoGame.TP
             {
                 rock.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateRotationY(trees[i].Z * 5) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
-            for (int i = 50; i < 250; i++)
+            for (int i = 50; i < 75; i++)
             {
                 tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
             }
 
             grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);
+
+            DrawHitBox(tanque.MeshBoundingBoxes[1].Min, tanque.MeshBoundingBoxes[1].Max);
+            
         }
 
         protected override void UnloadContent()
@@ -144,6 +147,54 @@ namespace TGC.MonoGame.TP
             Content.Unload();
 
             base.UnloadContent();
+        }
+
+        private void DrawHitBox(Vector3 vec1, Vector3 vec2)
+        {
+            Vector3 reem = new Vector3(vec1.X, vec2.Y, vec1.Z);
+            Vector3 reem2 = new Vector3(vec1.X, vec2.Y, vec2.Z);
+            Vector3 reem3 = new Vector3(vec2.X, vec2.Y, vec1.Z);
+            Vector3 reem4 = new Vector3(vec1.X, vec1.Y, vec2.Z);
+            Vector3 reem5 = new Vector3(vec2.X, vec1.Y, vec2.Z);
+            Vector3 reem6 = new Vector3(vec2.X, vec1.Y, vec1.Z);
+            var triangleVertices = new[]
+            {
+                new VertexPositionColor(vec1, Color.White),
+                new VertexPositionColor(reem, Color.White),
+                new VertexPositionColor(reem2, Color.White),
+                new VertexPositionColor(vec2, Color.White),
+                new VertexPositionColor(reem3, Color.White),
+                new VertexPositionColor(reem4, Color.White),
+                new VertexPositionColor(reem5, Color.White),
+                new VertexPositionColor(reem6, Color.White),
+            };
+
+            var _vertices = new VertexBuffer(GraphicsDevice, VertexPositionColor.VertexDeclaration, triangleVertices.Length,
+                BufferUsage.WriteOnly);
+            _vertices.SetData(triangleVertices);
+
+            var triangleIndices = new ushort[]
+            {
+                0,1,1,2,2,3,3,4,4,1,2,5,5,0,0,7,7,4,7,6,6,3,6,5
+            };
+
+            var _indices = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, 24, BufferUsage.None);
+            _indices.SetData(triangleIndices);
+            var _effect = new BasicEffect(GraphicsDevice)
+            {
+                World = Matrix.Identity,
+                View = View,
+                Projection = Projection,
+                VertexColorEnabled = true
+            };
+            GraphicsDevice.SetVertexBuffer(_vertices);
+            GraphicsDevice.Indices = _indices;
+
+            foreach (var pass in _effect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, 12);
+            }
         }
     }
 }
