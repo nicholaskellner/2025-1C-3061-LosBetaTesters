@@ -17,6 +17,7 @@ uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
 
+
 struct VertexShaderInput
 {
 	float4 Position : POSITION0;

@@ -39,7 +39,6 @@ namespace TGC.MonoGame.TP
         }
 
         private GraphicsDeviceManager Graphics { get; }
-        private SpriteBatch SpriteBatch { get; set; }
 
         public List<Vector3> trees { get; set; }
         public List<BoundingBox> TreeBoundingBoxes { get; set; } = new();
@@ -62,9 +61,6 @@ namespace TGC.MonoGame.TP
 
         private IndexBuffer _indices;
         
-        
-
-
 
         protected override void Initialize()
         {
@@ -152,19 +148,17 @@ namespace TGC.MonoGame.TP
             for (int i = 0; i < 50; i++)
             {
                 rock.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateRotationY(trees[i].Z * 5) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
-                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X)/2,(TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y)/2,(TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z)/2)*Matrix.CreateTranslation(trees[i].X, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y)/2, trees[i].Y));
+                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y) / 2, (TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z) / 2) * Matrix.CreateTranslation((TreeBoundingBoxes[i].Max.X + TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y) / 2-2f, (TreeBoundingBoxes[i].Max.Z + TreeBoundingBoxes[i].Min.Z) / 2));
             }
 
             for (int i = 50; i < 250; i++)
             {
                 tree.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
-                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X)/2,(TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y)/2,(TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z)/2)*Matrix.CreateTranslation(trees[i].X, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y)/2, trees[i].Y));
+                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y) / 2, (TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z) / 2) * Matrix.CreateTranslation((TreeBoundingBoxes[i].Max.X + TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y) / 2 -2f, (TreeBoundingBoxes[i].Max.Z + TreeBoundingBoxes[i].Min.Z) / 2));
             }
 
             grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);
-
-        
-            DrawHitBox(Matrix.CreateScale((tanque.MeshBoundingBoxes[1].Max.X - tanque.MeshBoundingBoxes[1].Min.X)/2,1f,(tanque.MeshBoundingBoxes[1].Max.Z - tanque.MeshBoundingBoxes[1].Min.Z)/2)* Matrix.CreateTranslation(tanque._position));
+            DrawHitBox(Matrix.CreateScale((tanque.MeshBoundingBoxes[1].Max.X - tanque.MeshBoundingBoxes[1].Min.X) / 2, 1f, (tanque.MeshBoundingBoxes[1].Max.Z - tanque.MeshBoundingBoxes[1].Min.Z) / 2) * Matrix.CreateTranslation((tanque.MeshBoundingBoxes[1].Max.X + tanque.MeshBoundingBoxes[1].Min.X) / 2,-1f,(tanque.MeshBoundingBoxes[1].Max.Z + tanque.MeshBoundingBoxes[1].Min.Z) / 2));
         }
 
         protected override void UnloadContent()
