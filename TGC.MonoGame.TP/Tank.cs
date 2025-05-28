@@ -31,7 +31,7 @@ public class Tank
     private float wheelRotationLeft = 0;
     public Vector3 _position = Vector3.Zero;
 
-    private Matrix World { get; set; }
+    public Matrix World { get; set; }
     private Matrix[] _boneTransforms;
     private Matrix cannonRepo = Matrix.CreateTranslation(0.08f, -1.3f, 0.3f); // 1.2f adelante, 0.2f arriba
 
