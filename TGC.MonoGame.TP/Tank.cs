@@ -61,7 +61,7 @@ public class Tank
 
     private float reloadTime = 2.0f; // tiempo de recarga en segundos
     private float reloadTimer = 0.0f;
-    private List<Shell> shells = new List<Shell>(); // lista de balas disparadas
+    public List<Shell> shells = new List<Shell>(); // lista de balas disparadas
 
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
