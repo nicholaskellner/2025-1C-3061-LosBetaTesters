@@ -41,8 +41,7 @@ namespace TGC.MonoGame.TP
 
         private GraphicsDeviceManager Graphics { get; }
 
-        public List<Vector3> trees { get; set; }
-        public List<BoundingBox> TreeBoundingBoxes { get; set; } = new();
+        public List<Prop> trees { get; set; }
         private Matrix View { get; set; }
         private Matrix Projection { get; set; }
 
@@ -66,24 +65,6 @@ namespace TGC.MonoGame.TP
 
         protected override void Initialize()
         {
-            var r = new Random();
-            trees = new List<Vector3>();
-            for (int i = 0; i < 250; i++)
-            {
-                var x = r.NextSingle() * 200;
-                var y = r.NextSingle() * 200;
-                if (i % 2 == 1) x = -x;
-                if (i % 3 == 0) y = -y;
-                var scale = r.NextSingle() + 1f;
-
-                trees.Add(new Vector3(x, y, scale));
-
-                // Crear bounding box para árbol
-                var boxMin = new Vector3(x - scale, 0, y - scale);
-                var boxMax = new Vector3(x + scale, 5 * scale, y + scale);
-                TreeBoundingBoxes.Add(new BoundingBox(boxMin, boxMax));
-            }
-
             var rasterizerState = new RasterizerState { CullMode = CullMode.None };
             GraphicsDevice.RasterizerState = rasterizerState;
             View = Matrix.CreateLookAt(new Vector3(15, 5, 0), Vector3.Zero, Vector3.Up);
@@ -113,6 +94,7 @@ namespace TGC.MonoGame.TP
             _effect = Content.Load<Effect>(ContentFolderEffects + "ShaderHitbox");
             _effect2 = Content.Load<Effect>(ContentFolderEffects + "ShaderTree");
             tanque = new Tank(Content, GraphicsDevice);
+            List<Vector3> treeColors = new List<Vector3> {new Vector3(0.943f, 0.588f, 0.325f), new Vector3(0.1f, 0.7f, 0.1f) };
             base.LoadContent();
             foreach (ModelMesh mesh in tree.Meshes)
             {
@@ -121,20 +103,39 @@ namespace TGC.MonoGame.TP
                     part.Effect = _effect2;
                 }
             }
+            var r = new Random();
+            trees = new List<Prop>();
+            for (int i = 0; i < 250; i++)
+            {
+                var x = r.NextSingle() * 200;
+                var y = r.NextSingle() * 200;
+                if (i % 2 == 1) x = -x;
+                if (i % 3 == 0) y = -y;
+                var scale = r.NextSingle() + 1f;
+
+                // Crear bounding box para árbol
+                var boxMin = new Vector3(x - scale, 0, y - scale);
+                var boxMax = new Vector3(x + scale, 5 * scale, y + scale);
+                if (i < 50)
+                    trees.Add(new Rock(rock, _effect2, new Vector3(x, -2, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f,0.7f,0.7f)));
+                else
+                    trees.Add(new Tree(tree,_effect2, new Vector3(x, -2 , y), new Vector3 (1,1,1), new BoundingBox(boxMin, boxMax),treeColors));
+            }
         }
 
         protected override void Update(GameTime gameTime)
         {
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-                        
+
+            trees.RemoveAll(tree => tree.isExpired);
             tanque.Update(gameTime);
             
             foreach (var meshBox in tanque.MeshBoundingBoxes)
             {
-                foreach (var treeBox in TreeBoundingBoxes)
+                foreach (var tree in trees)
                 {
-                    if (meshBox.Intersects(treeBox))
+                    if (meshBox.Intersects(tree.hitBox))
                     {
                         tanque.RevertPosition();
                         break;
@@ -142,15 +143,16 @@ namespace TGC.MonoGame.TP
                 }
             }
             var i = 0;
-            foreach (var treeBox in TreeBoundingBoxes)
+            foreach (var tree in trees)
             {
                 foreach (var shell in tanque.shells)
                 {
-                    if (shell._position.X > treeBox.Min.X && shell._position.X < treeBox.Max.X)
+                    if (shell._position.X > tree.hitBox.Min.X && shell._position.X < tree.hitBox.Max.X)
                     {
-                        if (shell._position.Z > treeBox.Min.Z && shell._position.Z < treeBox.Max.Z)
+                        if (shell._position.Z > tree.hitBox.Min.Z && shell._position.Z < tree.hitBox.Max.Z)
                         {
-                            trees[i] = new Vector3(1, 100, 1);
+                            tree.getHit();
+                            shell.isExpired = true;
                         }
                     }
                 }
@@ -162,37 +164,6 @@ namespace TGC.MonoGame.TP
             base.Update(gameTime);
         }
 
-        private void DrawTree(Model model, Matrix world)
-        {
-            foreach (var mesh in model.Meshes)
-            {
-                var i = 0;
-                foreach (var effect in mesh.Effects)
-                {
-                    effect.Parameters["World"].SetValue(world);
-                    effect.Parameters["View"].SetValue(View);
-                    effect.Parameters["Projection"].SetValue(Projection);
-                    effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-                    effect.Parameters["KAmbient"].SetValue(0.5f);
-                }
-                foreach (var part in mesh.MeshParts)
-                {
-                    GraphicsDevice.SetVertexBuffer(part.VertexBuffer);
-                    GraphicsDevice.Indices = part.IndexBuffer;
-                    if (i == 0)
-                        part.Effect.Parameters["color"].SetValue(new Vector4(0.943f, 0.588f, 0.325f, 1));
-                    else
-                        part.Effect.Parameters["color"].SetValue(new Vector4(0.260f, 0.849f, 0.603f, 1));
-                    foreach (var pass in part.Effect.CurrentTechnique.Passes)
-                    {
-                        pass.Apply();
-                        GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, part.VertexOffset, part.StartIndex, part.PrimitiveCount);
-                    }
-                    i++;
-                }
-            }
-        }
-
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
@@ -201,16 +172,9 @@ namespace TGC.MonoGame.TP
 
             tanque.Draw(GraphicsDevice, View, Projection);
 
-            for (int i = 0; i < 50; i++)
-            {
-                rock.Draw(Matrix.CreateScale(trees[i].Z) * Matrix.CreateRotationY(trees[i].Z * 5) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y), View, Projection);
-                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y) / 2, (TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z) / 2) * Matrix.CreateTranslation((TreeBoundingBoxes[i].Max.X + TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y) / 2 - 2f, (TreeBoundingBoxes[i].Max.Z + TreeBoundingBoxes[i].Min.Z) / 2));
-            }
-
-            for (int i = 50; i < 250; i++)
-            {
-                DrawTree(tree,Matrix.CreateScale(trees[i].Z) * Matrix.CreateTranslation(trees[i].X, -2, trees[i].Y));
-                DrawHitBox(Matrix.CreateScale((TreeBoundingBoxes[i].Max.X - TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y - TreeBoundingBoxes[i].Min.Y) / 2, (TreeBoundingBoxes[i].Max.Z - TreeBoundingBoxes[i].Min.Z) / 2) * Matrix.CreateTranslation((TreeBoundingBoxes[i].Max.X + TreeBoundingBoxes[i].Min.X) / 2, (TreeBoundingBoxes[i].Max.Y + TreeBoundingBoxes[i].Min.Y) / 2 - 2f, (TreeBoundingBoxes[i].Max.Z + TreeBoundingBoxes[i].Min.Z) / 2));
+            foreach(var tree in trees){
+                tree.Draw(GraphicsDevice, View, Projection);
+                DrawHitBox(Matrix.CreateScale((tree.hitBox.Max.X - tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y - tree.hitBox.Min.Y) / 2, (tree.hitBox.Max.Z - tree.hitBox.Min.Z) / 2) * Matrix.CreateTranslation((tree.hitBox.Max.X + tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y + tree.hitBox.Min.Y) / 2 - 2f, (tree.hitBox.Max.Z + tree.hitBox.Min.Z) / 2));
             }
 
             grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);

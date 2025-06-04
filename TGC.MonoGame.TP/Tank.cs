@@ -199,7 +199,7 @@ public class Tank
             Vector3 shellDir = turretRotation;
 
             // Crear la shell
-            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
+            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir, this));
             reloadTimer = reloadTime;
         }
 
@@ -208,9 +208,8 @@ public class Tank
         {
             shell.Update(gameTime);
         }
+        shells.RemoveAll(shell => shell.isExpired);
         UpdateMeshBoundingBoxes();
-
-        //shells.RemoveAll(shell => shell.isExpired);
 
     }
 
