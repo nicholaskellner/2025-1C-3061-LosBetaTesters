@@ -12,18 +12,20 @@ public abstract class Prop
     protected Vector3 color;
     protected Matrix world;
     protected Matrix World { get; set; }
+    protected float scale;
 
     public bool isExpired = false;
     public BoundingBox hitBox;
 
 
-    public Prop(Model model, Effect effect, Vector3 position, Vector3 direction)
+    public Prop(Model model, Effect effect, Vector3 position, Vector3 direction, float scale)
     {
         Model = model;
         Effect = effect;
         _position = position;
         direction.Normalize();
         world = Matrix.CreateTranslation(position);
+        this.scale = scale;
 
         foreach (var mesh in Model.Meshes)
             foreach (var part in mesh.MeshParts)

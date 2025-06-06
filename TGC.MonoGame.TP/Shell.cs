@@ -9,23 +9,20 @@ public class Shell
     private Effect Effect { get; set; }
     public Vector3 _direction;
     public Vector3 _position;
-    private float gravity = -9.8f;
+    private Vector3 gravity = new Vector3(0,-9.8f,0);
     private Matrix World { get; set; }
-    private Vector3 velocity;
 
     public bool isExpired = false;
     private float lifetime = 5f; // Tiempo desde que se detiene
-    private float currentSpeed = 10f;
-    private float speed = 30f;
-    private Tank tanque;
-    public Shell(Model model, Effect effect, Vector3 position, Vector3 direction, Tank tanque)
+    private Vector3 speed;
+    private float fireSpeed = 130f;
+    public Shell(Model model, Effect effect, Vector3 position, Vector3 direction)
     {
         Model = model;
         Effect = effect;
         _position = position;
         direction.Normalize();
-        velocity = direction * speed;
-        this.tanque = tanque;
+        speed = direction * fireSpeed;
 
         foreach (var mesh in Model.Meshes)
             foreach (var part in mesh.MeshParts)
@@ -36,12 +33,13 @@ public class Shell
     {
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        _position += velocity * dt;
+        speed += gravity * dt;
+        _position += speed * dt;
 
         lifetime -= dt;
         if (lifetime <= 0) isExpired = true;
 
-        Vector3 forward = Vector3.Normalize(velocity);
+        Vector3 forward = Vector3.Normalize(speed);
         World = Matrix.CreateScale(0.1f)
               * Matrix.CreateWorld(_position, forward, Vector3.Up);
     }

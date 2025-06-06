@@ -117,9 +117,9 @@ namespace TGC.MonoGame.TP
                 var boxMin = new Vector3(x - scale, 0, y - scale);
                 var boxMax = new Vector3(x + scale, 5 * scale, y + scale);
                 if (i < 50)
-                    trees.Add(new Rock(rock, _effect2, new Vector3(x, -2, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f,0.7f,0.7f)));
+                    trees.Add(new Rock(rock, _effect2, new Vector3(x, -2, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f,0.7f,0.7f),scale));
                 else
-                    trees.Add(new Tree(tree,_effect2, new Vector3(x, -2 , y), new Vector3 (1,1,1), new BoundingBox(boxMin, boxMax),treeColors));
+                    trees.Add(new Tree(tree,_effect2, new Vector3(x, -2 , y), new Vector3 (1,1,1), new BoundingBox(boxMin, boxMax),treeColors,scale));
             }
         }
 
@@ -151,8 +151,11 @@ namespace TGC.MonoGame.TP
                     {
                         if (shell._position.Z > tree.hitBox.Min.Z && shell._position.Z < tree.hitBox.Max.Z)
                         {
-                            tree.getHit();
-                            shell.isExpired = true;
+                            if (shell._position.Y > tree.hitBox.Min.Y && shell._position.Y < tree.hitBox.Max.Y)
+                            {
+                                tree.getHit();
+                                shell.isExpired = true;
+                            }
                         }
                     }
                 }

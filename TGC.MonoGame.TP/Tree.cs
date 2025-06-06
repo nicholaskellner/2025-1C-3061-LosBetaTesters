@@ -7,28 +7,28 @@ using System.Collections.Generic;
 public class Tree : Prop
 {
     private List<Vector3> colors;
-    public Tree(Model model, Effect effect, Vector3 position, Vector3 direction, BoundingBox box) : base(model, effect, position, direction)
+    public Tree(Model model, Effect effect, Vector3 position, Vector3 direction, BoundingBox box, float scale) : base(model, effect, position, direction,scale)
     {
         Model = model;
         Effect = effect;
         _position = position;
         direction.Normalize();
         hitBox = box;
-        world = Matrix.CreateTranslation(position);
+        world = Matrix.CreateScale(scale) * Matrix.CreateTranslation(position);
         color = new Vector3(0.943f, 0.588f, 0.325f);
 
         foreach (var mesh in Model.Meshes)
             foreach (var part in mesh.MeshParts)
                 part.Effect = Effect;
     }
-    public Tree(Model model, Effect effect, Vector3 position, Vector3 direction, BoundingBox box, List<Vector3> colores) : base(model, effect, position, direction)
+    public Tree(Model model, Effect effect, Vector3 position, Vector3 direction, BoundingBox box, List<Vector3> colores,float scale) : base(model, effect, position, direction,scale)
     {
         Model = model;
         Effect = effect;
         _position = position;
         direction.Normalize();
         hitBox = box;
-        world = Matrix.CreateTranslation(position);
+        world = Matrix.CreateScale(scale) * Matrix.CreateTranslation(position);
         colors = colores;
 
         foreach (var mesh in Model.Meshes)

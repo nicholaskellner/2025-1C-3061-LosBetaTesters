@@ -199,7 +199,7 @@ public class Tank
             Vector3 shellDir = turretRotation;
 
             // Crear la shell
-            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir, this));
+            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
             reloadTimer = reloadTime;
         }
 
