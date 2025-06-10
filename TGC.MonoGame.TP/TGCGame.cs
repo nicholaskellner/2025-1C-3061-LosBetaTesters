@@ -58,8 +58,14 @@ namespace TGC.MonoGame.TP
 
         private Effect _effect;
         private Effect _effect2;
+        private Effect _effect3;
 
         private IndexBuffer _indices;
+        private VertexBuffer vertexBuffer;
+        private IndexBuffer indexBuffer;
+        private List<VertexPositionNormalTexture> vertices = new List<VertexPositionNormalTexture>();
+        private List<short> indices = new List<short>();
+        private Vector3[,] heightMapVertices;
 
         
 
@@ -93,6 +99,9 @@ namespace TGC.MonoGame.TP
             shell = Content.Load<Model>(ContentFolder3D + "shell");
             _effect = Content.Load<Effect>(ContentFolderEffects + "ShaderHitbox");
             _effect2 = Content.Load<Effect>(ContentFolderEffects + "ShaderTree");
+            _effect3 = Content.Load<Effect>(ContentFolderEffects + "ShaderTerrain");
+            Texture2D heightMapTexture = Content.Load<Texture2D>(ContentFolder3D + "heightmap");
+            createHeightMap(heightMapTexture);
             tanque = new Tank(Content, GraphicsDevice);
             List<Vector3> treeColors = new List<Vector3> {new Vector3(0.943f, 0.588f, 0.325f), new Vector3(0.1f, 0.7f, 0.1f) };
             base.LoadContent();
@@ -114,15 +123,92 @@ namespace TGC.MonoGame.TP
                 var scale = r.NextSingle() + 1f;
 
                 // Crear bounding box para árbol
-                var boxMin = new Vector3(x - scale, 0, y - scale);
-                var boxMax = new Vector3(x + scale, 5 * scale, y + scale);
+                var alt = 0f;
+                if (x > -200 && y > -200 && x < 1080 && y < 1080)
+                    alt = heightMapVertices[(int)x / 10 + 20, (int)y / 10 + 20].Y - 20;
+                var boxMin = new Vector3(x - scale, alt+2, y - scale);
+                var boxMax = new Vector3(x + scale, alt+7 * scale, y + scale);
+                
+                
                 if (i < 50)
-                    trees.Add(new Rock(rock, _effect2, new Vector3(x, -2, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f,0.7f,0.7f),scale));
+                    trees.Add(new Rock(rock, _effect2, new Vector3(x, alt, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f, 0.7f, 0.7f), scale));
                 else
-                    trees.Add(new Tree(tree,_effect2, new Vector3(x, -2 , y), new Vector3 (1,1,1), new BoundingBox(boxMin, boxMax),treeColors,scale));
+                    trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), treeColors, scale));
             }
         }
 
+        private void createHeightMap(Texture2D texture)
+        {
+            int width = texture.Width;
+            int height = texture.Height;
+            heightMapVertices = new Vector3[width, height];
+            Color[] heightMapColors = new Color[texture.Width * texture.Height];
+            texture.GetData(heightMapColors);
+            
+            float heightScale = 40f; // vertical scale multiplier
+
+            
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int z = 0; z < height; z++)
+                {
+                    int index = x + z * width;
+                    float y = heightMapColors[index].R / 255f * heightScale; // Grayscale = R
+                    heightMapVertices[x, z] = new Vector3(x, y, z);
+                }
+            }
+
+            for (int x = 0; x < width - 1; x++)
+            {
+                for (int z = 0; z < height - 1; z++)
+                {
+                    // Triangle 1
+                    AddVertex(x, z);
+                    AddVertex(x + 1, z);
+                    AddVertex(x, z + 1);
+
+                    // Triangle 2
+                    AddVertex(x + 1, z);
+                    AddVertex(x + 1, z + 1);
+                    AddVertex(x, z + 1);
+                }
+            }
+
+            void AddVertex(int x, int z)
+            {
+                Vector3 position = heightMapVertices[x, z];
+                Vector2 texCoord = new Vector2((float)x / width, (float)z / height);
+                vertices.Add(new VertexPositionNormalTexture(position, Vector3.Up, texCoord)); // normals calculated later
+                indices.Add((short)(vertices.Count - 1));
+            }
+            vertexBuffer = new VertexBuffer(GraphicsDevice,
+                typeof(VertexPositionNormalTexture), vertices.Count, BufferUsage.WriteOnly);
+            vertexBuffer.SetData(vertices.ToArray());
+
+            indexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits,
+                indices.Count, BufferUsage.WriteOnly);
+            indexBuffer.SetData(indices.ToArray());
+        }
+        private void drawTerrain()
+        {
+            GraphicsDevice.SetVertexBuffer(vertexBuffer);
+            GraphicsDevice.Indices = indexBuffer;
+
+            var effect = _effect3;
+            effect.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
+            effect.Parameters["View"].SetValue(View);
+            effect.Parameters["Projection"].SetValue(Projection);
+            effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["KAmbient"].SetValue(1f);
+
+            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0,
+                    indices.Count / 3);
+            }
+        }
         protected override void Update(GameTime gameTime)
         {
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -130,7 +216,7 @@ namespace TGC.MonoGame.TP
 
             trees.RemoveAll(tree => tree.isExpired);
             tanque.Update(gameTime);
-            
+
             foreach (var meshBox in tanque.MeshBoundingBoxes)
             {
                 foreach (var tree in trees)
@@ -162,8 +248,8 @@ namespace TGC.MonoGame.TP
                 i++;
             }
             View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
-                
-                
+
+
             base.Update(gameTime);
         }
 
@@ -172,7 +258,7 @@ namespace TGC.MonoGame.TP
             GraphicsDevice.Clear(Color.Black);
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             GraphicsDevice.BlendState = BlendState.Opaque;
-
+            drawTerrain();
             tanque.Draw(GraphicsDevice, View, Projection);
 
             foreach(var tree in trees){
@@ -180,8 +266,8 @@ namespace TGC.MonoGame.TP
                 DrawHitBox(Matrix.CreateScale((tree.hitBox.Max.X - tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y - tree.hitBox.Min.Y) / 2, (tree.hitBox.Max.Z - tree.hitBox.Min.Z) / 2) * Matrix.CreateTranslation((tree.hitBox.Max.X + tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y + tree.hitBox.Min.Y) / 2 - 2f, (tree.hitBox.Max.Z + tree.hitBox.Min.Z) / 2));
             }
 
-            grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);
-            DrawHitBox(Matrix.CreateScale((tanque.MeshBoundingBoxes[1].Max.X - tanque.MeshBoundingBoxes[1].Min.X) / 2, 2f, (tanque.MeshBoundingBoxes[1].Max.Z - tanque.MeshBoundingBoxes[1].Min.Z) / 2) * Matrix.CreateTranslation((tanque.MeshBoundingBoxes[1].Max.X + tanque.MeshBoundingBoxes[1].Min.X) / 2, 0f, (tanque.MeshBoundingBoxes[1].Max.Z + tanque.MeshBoundingBoxes[1].Min.Z) / 2));
+            //grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);
+            DrawHitBox(Matrix.CreateScale((tanque.MeshBoundingBoxes[1].Max.X - tanque.MeshBoundingBoxes[1].Min.X) / 2, 2f, (tanque.MeshBoundingBoxes[1].Max.Z - tanque.MeshBoundingBoxes[1].Min.Z) / 2) * Matrix.CreateTranslation((tanque.MeshBoundingBoxes[1].Max.X + tanque.MeshBoundingBoxes[1].Min.X) / 2, 6f, (tanque.MeshBoundingBoxes[1].Max.Z + tanque.MeshBoundingBoxes[1].Min.Z) / 2));
         }
 
         protected override void UnloadContent()

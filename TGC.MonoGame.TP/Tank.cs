@@ -29,7 +29,7 @@ public class Tank
 
     private float wheelRotationRight = 0;
     private float wheelRotationLeft = 0;
-    public Vector3 _position = Vector3.Zero;
+    public Vector3 _position = new Vector3(0,6,0);
 
     public Matrix World { get; set; }
     private Matrix[] _boneTransforms;

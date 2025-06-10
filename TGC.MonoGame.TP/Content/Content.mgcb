@@ -31,6 +31,12 @@
 /processorParam:DebugMode=Auto
 /build:Effects/ShaderTanque.fx
 
+#begin Effects/ShaderTerrain.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ShaderTerrain.fx
+
 #begin Effects/ShaderTree.fx
 /importer:EffectImporter
 /processor:EffectProcessor
@@ -55,6 +61,30 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:Models/ground_grass.fbx
+
+#begin Models/heightmap.jpg
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Models/heightmap.jpg
+
+#begin Models/heightmap2.jpg
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Models/heightmap2.jpg
 
 #begin Models/rock_largeA.fbx
 /importer:FbxImporter
