@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
 
 namespace TGC.MonoGame.TP
 {
@@ -55,6 +56,7 @@ namespace TGC.MonoGame.TP
         private double timeSinceLastInput = 0;
 
         private Song menuMusic;
+        SoundEffect shootSound;
         private bool isMuted = false;
         private KeyboardState previousKState;
 
@@ -89,6 +91,7 @@ namespace TGC.MonoGame.TP
             spriteBatch = new SpriteBatch(GraphicsDevice);
             menuFont = Content.Load<SpriteFont>(ContentFolderSpriteFonts + "BasicFont");
             menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
+            
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Volume = 0.5f; // entre 0 y 1
             MediaPlayer.Play(menuMusic);

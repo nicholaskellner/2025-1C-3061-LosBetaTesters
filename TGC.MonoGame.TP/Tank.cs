@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -20,6 +21,7 @@ public class Tank
     private GraphicsDevice graphicsDevice;
     private ContentManager content;
     private float elapsedTime = 0;
+    private SoundEffect shootSound;
 
     private float yaw = 0;
     private float turret_yaw = 0;
@@ -81,6 +83,7 @@ public class Tank
         ShellModel = content.Load<Model>(ContentFolder3D + "shell");
         ShellEffect = content.Load<Effect>(ContentFolderEffects + "ShaderShell");
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
+        shootSound = content.Load<SoundEffect>("Sounds/shoot");
 
 
         cannonBone = Model.Bones["Cannon"];
@@ -189,6 +192,7 @@ public class Tank
 
         if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0f)
         {
+            shootSound.Play();
             var ms = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
             reloadTimer -= dt;
