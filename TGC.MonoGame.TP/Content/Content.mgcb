@@ -466,10 +466,10 @@
 /processorParam:Quality=Best
 /build:Sounds/shoot.mp3
 
-#begin SpriteFont/BasicFont.spritefont
+#begin SpriteFonts/BasicFont.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
-/build:SpriteFont/BasicFont.spritefont
+/build:SpriteFonts/BasicFont.spritefont
 
