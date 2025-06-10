@@ -17,7 +17,7 @@ namespace TGC.MonoGame.TP
         public const string ContentFolderSpriteFonts = "SpriteFonts/";
         public const string ContentFolderTextures = "Models/textures_mod/";
 
-        private enum GameState { Menu, Playing, Exit }
+        private enum GameState { Menu, Playing, Paused, Exit }
         private GameState CurrentState = GameState.Menu;
 
         public TGCGame()
@@ -37,6 +37,8 @@ namespace TGC.MonoGame.TP
         private SpriteFont menuFont;
         private int selectedOption = 0;
         private string[] menuOptions = { "Iniciar Juego", "Salir" };
+        private string[] pauseMenuOptions = { "Reanudar", "Volver al menu principal" };
+        private int pauseSelectedOption = 0;
 
         public List<Prop> trees { get; set; }
         private Model grass, rock, tree, shell;
@@ -59,6 +61,7 @@ namespace TGC.MonoGame.TP
         SoundEffect shootSound;
         private bool isMuted = false;
         private KeyboardState previousKState;
+        private KeyboardState previousKeyboardState;
 
         protected override void Initialize()
         {
@@ -166,13 +169,14 @@ namespace TGC.MonoGame.TP
         }
 
         protected override void Update(GameTime gameTime)
-        {   
-            
+        {
             KeyboardState kState = Keyboard.GetState();
+            var currentKeyboardState = Keyboard.GetState(); //esto es para el menu pausa
             timeSinceLastInput += gameTime.ElapsedGameTime.TotalSeconds;
 
             if (CurrentState == GameState.Menu)
             {
+                // Menú principal
                 if (timeSinceLastInput >= inputCooldown)
                 {
                     if (kState.IsKeyDown(Keys.Up))
@@ -195,16 +199,20 @@ namespace TGC.MonoGame.TP
                         timeSinceLastInput = 0;
                     }
                 }
+
                 if (kState.IsKeyDown(Keys.M) && !previousKState.IsKeyDown(Keys.M))
                 {
                     isMuted = !isMuted;
                     MediaPlayer.IsMuted = isMuted;
                 }
-
             }
+
             else if (CurrentState == GameState.Playing)
             {
-                if (kState.IsKeyDown(Keys.Escape)) Exit();
+                if (kState.IsKeyDown(Keys.Escape) && !previousKState.IsKeyDown(Keys.Escape))
+                {
+                    CurrentState = GameState.Paused;
+                }
 
                 trees.RemoveAll(t => t.isExpired);
                 tanque.Update(gameTime);
@@ -227,10 +235,44 @@ namespace TGC.MonoGame.TP
 
                 View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
             }
-            previousKState = kState;
 
+            else if (CurrentState == GameState.Paused)
+            {
+                if (timeSinceLastInput >= inputCooldown)
+                {
+                    if (kState.IsKeyDown(Keys.Up))
+                    {
+                        pauseSelectedOption = (pauseSelectedOption + pauseMenuOptions.Length - 1) % pauseMenuOptions.Length;
+                        timeSinceLastInput = 0;
+                    }
+                    else if (kState.IsKeyDown(Keys.Down))
+                    {
+                        pauseSelectedOption = (pauseSelectedOption + 1) % pauseMenuOptions.Length;
+                        timeSinceLastInput = 0;
+                    }
+                    else if (kState.IsKeyDown(Keys.Enter))
+                    {
+                        if (pauseSelectedOption == 0)
+                            CurrentState = GameState.Playing;
+                        else if (pauseSelectedOption == 1)
+                        {
+                            CurrentState = GameState.Menu;
+                            MediaPlayer.Play(menuMusic); // volver a la música del menú
+                        }
+                        timeSinceLastInput = 0;
+                    }
+                    else if (kState.IsKeyDown(Keys.R))
+                    {
+                        CurrentState = GameState.Playing;
+                        timeSinceLastInput = 0;
+                    }
+                }
+            }
+
+            previousKState = kState;
             base.Update(gameTime);
         }
+
 
         protected override void Draw(GameTime gameTime)
         {
@@ -272,6 +314,23 @@ namespace TGC.MonoGame.TP
                 {
                     DrawHitBox(box);
                 }
+            }
+            else if (CurrentState == GameState.Paused)
+            {
+                // Fondo del juego como si estuviera congelado
+                drawTerrain();
+                tanque.Draw(GraphicsDevice, View, Projection);
+                foreach (var tree in trees)
+                    tree.Draw(GraphicsDevice, View, Projection);
+
+                // Menú encima
+                spriteBatch.Begin();
+                for (int i = 0; i < pauseMenuOptions.Length; i++)
+                {
+                    var color = i == pauseSelectedOption ? Color.Yellow : Color.White;
+                    spriteBatch.DrawString(menuFont, pauseMenuOptions[i], new Vector2(100, 100 + i * 40), color);
+                }
+                spriteBatch.End();
             }
 
             base.Draw(gameTime);
