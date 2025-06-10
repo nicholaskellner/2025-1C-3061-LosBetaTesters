@@ -454,6 +454,12 @@
 /processorParam:Quality=Best
 /build:Music/menu_music.mp3
 
+#begin Sounds/movement_sound.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Sounds/movement_sound.mp3
+
 #begin Sounds/shoot.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor

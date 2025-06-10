@@ -22,6 +22,8 @@ public class Tank
     private ContentManager content;
     private float elapsedTime = 0;
     private SoundEffect shootSound;
+    SoundEffect movementSound;
+    SoundEffectInstance movementSoundInstance;
 
     private float yaw = 0;
     private float turret_yaw = 0;
@@ -84,6 +86,9 @@ public class Tank
         ShellEffect = content.Load<Effect>(ContentFolderEffects + "ShaderShell");
         TreadmillTexture = content.Load<Texture2D>(ContentFolderTextures + "treadmills");
         shootSound = content.Load<SoundEffect>("Sounds/shoot");
+        movementSound = content.Load<SoundEffect>("Sounds/movement_sound"); // pon el nombre correcto del archivo
+        movementSoundInstance = movementSound.CreateInstance();
+        movementSoundInstance.IsLooped = true; 
 
 
         cannonBone = Model.Bones["Cannon"];
@@ -110,23 +115,27 @@ public class Tank
     public void Update(GameTime gameTime)
     {
         PreviousPosition = _position;
+        bool isMoving = false;
         elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
         //Falta agregar acceleracion si es que los tanques tienen
         speed = 0;
         if (Keyboard.GetState().IsKeyDown(Keys.W))
         {
+            isMoving = true;
             speed = 1f;
             _position += _rotation * speed * elapsedTime * 3f;
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.S))
         {
+            isMoving = true;
             speed = -1f;
             _position += _rotation * speed * elapsedTime * 3f;
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
+            isMoving = true;
             if (speed < 0)
             {
                 yaw -= rotationSpeed * elapsedTime;
@@ -145,6 +154,7 @@ public class Tank
 
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
+            isMoving = true;
             if (speed < 0)
             {
                 yaw += rotationSpeed * elapsedTime;
@@ -211,6 +221,16 @@ public class Tank
             // Crear la shell
             shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
             reloadTimer = reloadTime;
+        }
+        if (isMoving)
+        {
+            if (movementSoundInstance.State != SoundState.Playing)
+                movementSoundInstance.Play();
+        }
+        else
+        {
+            if (movementSoundInstance.State == SoundState.Playing)
+                movementSoundInstance.Pause();
         }
 
         // Actualizar balas activas
