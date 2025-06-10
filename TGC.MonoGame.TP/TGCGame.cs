@@ -1,17 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Security;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 
 namespace TGC.MonoGame.TP
 {
-    /// <summary>
-    ///     Esta es la clase principal del juego.
-    ///     Inicialmente puede ser renombrado o copiado para hacer mas ejemplos chicos, en el caso de copiar para que se
-    ///     ejecute el nuevo ejemplo deben cambiar la clase que ejecuta Program <see cref="Program.Main()" /> linea 10.
-    /// </summary>
     public class TGCGame : Game
     {
         public const string ContentFolder3D = "Models/";
@@ -21,78 +16,83 @@ namespace TGC.MonoGame.TP
         public const string ContentFolderSpriteFonts = "SpriteFonts/";
         public const string ContentFolderTextures = "Models/textures_mod/";
 
-        /// <summary>
-        ///     Constructor del juego.
-        /// </summary>
+        private enum GameState { Menu, Playing, Exit }
+        private GameState CurrentState = GameState.Menu;
+
         public TGCGame()
         {
-            // Maneja la configuracion y la administracion del dispositivo grafico.
             Graphics = new GraphicsDeviceManager(this);
-
             Graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
             Graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
-
-            // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
-            // Carpeta raiz donde va a estar toda la Media.
             Content.RootDirectory = "Content";
-            // Hace que el mouse sea visible.
-            IsMouseVisible = false;
+            IsMouseVisible = true;
         }
 
         private GraphicsDeviceManager Graphics { get; }
-
-        public List<Prop> trees { get; set; }
         private Matrix View { get; set; }
         private Matrix Projection { get; set; }
 
-        private Model grass;
+        private SpriteBatch spriteBatch;
+        private SpriteFont menuFont;
+        private int selectedOption = 0;
+        private string[] menuOptions = { "Iniciar Juego", "Salir" };
 
-        private Model rock;
-        private Model shell;
-
-        private Model tree;
+        public List<Prop> trees { get; set; }
+        private Model grass, rock, tree, shell;
         private Tank tanque;
-
         private VertexBuffer VertexBuffer;
         public VertexPosition[] _vertices = new VertexPosition[8];
-
-        private Effect _effect;
-        private Effect _effect2;
-        private Effect _effect3;
-
+        private Effect _effect, _effect2, _effect3;
         private IndexBuffer _indices;
         private VertexBuffer vertexBuffer;
         private IndexBuffer indexBuffer;
-        private List<VertexPositionNormalTexture> vertices = new List<VertexPositionNormalTexture>();
-        private List<short> indices = new List<short>();
+        private List<VertexPositionNormalTexture> vertices = new();
+        private List<short> indices = new();
         private Vector3[,] heightMapVertices;
+        private Matrix MenuView;
+        private Tank menuTank;
+        private double inputCooldown = 0.2; // segundos entre inputs válidos
+        private double timeSinceLastInput = 0;
 
-        
+        private Song menuMusic;
+        private bool isMuted = false;
+        private KeyboardState previousKState;
 
         protected override void Initialize()
         {
             var rasterizerState = new RasterizerState { CullMode = CullMode.None };
             GraphicsDevice.RasterizerState = rasterizerState;
             View = Matrix.CreateLookAt(new Vector3(15, 5, 0), Vector3.Zero, Vector3.Up);
+            MenuView = Matrix.CreateLookAt(new Vector3(150, 80, 150), Vector3.Zero, Vector3.Up);
             Projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 250);
-            var triangleIndices = new short[]
-            {
-                0, 1, 1, 2, 2, 3, 3, 0, // bottom
-                4, 5, 5, 6, 6, 7, 7, 4, // top
-                0, 4, 1, 5, 2, 6, 3, 7  // sides
+
+            short[] triangleIndices = {
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7
             };
             _indices = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, 24, BufferUsage.None);
             _indices.SetData(triangleIndices);
+
             VertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPosition), 8, BufferUsage.WriteOnly);
-            Vector3[] vertices = [new Vector3(1, -1, 1), new Vector3(-1, -1, 1), new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, 1), new Vector3(-1, 1, 1), new Vector3(-1, 1, -1), new Vector3(1, 1, -1)];
-            for (int i = 0; i < 8; i++)
-                _vertices[i] = new VertexPosition(vertices[i]);
+            Vector3[] verts = {
+                new(1, -1, 1), new(-1, -1, 1), new(-1, -1, -1), new(1, -1, -1),
+                new(1, 1, 1), new(-1, 1, 1), new(-1, 1, -1), new(1, 1, -1)
+            };
+            for (int i = 0; i < 8; i++) _vertices[i] = new VertexPosition(verts[i]);
             VertexBuffer.SetData(_vertices);
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+            menuFont = Content.Load<SpriteFont>(ContentFolderSpriteFonts + "BasicFont");
+            menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Volume = 0.5f; // entre 0 y 1
+            MediaPlayer.Play(menuMusic);
+
             grass = Content.Load<Model>(ContentFolder3D + "ground_grass");
             rock = Content.Load<Model>(ContentFolder3D + "rockA");
             tree = Content.Load<Model>(ContentFolder3D + "tree");
@@ -100,155 +100,131 @@ namespace TGC.MonoGame.TP
             _effect = Content.Load<Effect>(ContentFolderEffects + "ShaderHitbox");
             _effect2 = Content.Load<Effect>(ContentFolderEffects + "ShaderTree");
             _effect3 = Content.Load<Effect>(ContentFolderEffects + "ShaderTerrain");
+
             Texture2D heightMapTexture = Content.Load<Texture2D>(ContentFolder3D + "heightmap");
             createHeightMap(heightMapTexture);
             tanque = new Tank(Content, GraphicsDevice);
-            List<Vector3> treeColors = new List<Vector3> {new Vector3(0.943f, 0.588f, 0.325f), new Vector3(0.1f, 0.7f, 0.1f) };
-            base.LoadContent();
+            menuTank = new Tank(Content, GraphicsDevice);
+            menuTank._position = new Vector3(0, 0, 0);
+
+            List<Vector3> treeColors = new() { new Vector3(0.943f, 0.588f, 0.325f), new Vector3(0.1f, 0.7f, 0.1f) };
             foreach (ModelMesh mesh in tree.Meshes)
-            {
                 foreach (ModelMeshPart part in mesh.MeshParts)
-                {
                     part.Effect = _effect2;
-                }
-            }
+
             var r = new Random();
             trees = new List<Prop>();
             for (int i = 0; i < 250; i++)
             {
-                var x = r.NextSingle() * 200;
-                var y = r.NextSingle() * 200;
-                if (i % 2 == 1) x = -x;
-                if (i % 3 == 0) y = -y;
+                var x = r.NextSingle() * 200 * ((i % 2 == 1) ? -1 : 1);
+                var y = r.NextSingle() * 200 * ((i % 3 == 0) ? -1 : 1);
                 var scale = r.NextSingle() + 1f;
+                var alt = (x > -200 && y > -200 && x < 1080 && y < 1080) ? heightMapVertices[(int)x / 10 + 20, (int)y / 10 + 20].Y - 20 : 0f;
+                var boxMin = new Vector3(x - scale, alt + 2, y - scale);
+                var boxMax = new Vector3(x + scale, alt + 7 * scale, y + scale);
 
-                // Crear bounding box para árbol
-                var alt = 0f;
-                if (x > -200 && y > -200 && x < 1080 && y < 1080)
-                    alt = heightMapVertices[(int)x / 10 + 20, (int)y / 10 + 20].Y - 20;
-                var boxMin = new Vector3(x - scale, alt+2, y - scale);
-                var boxMax = new Vector3(x + scale, alt+7 * scale, y + scale);
-                
-                
                 if (i < 50)
-                    trees.Add(new Rock(rock, _effect2, new Vector3(x, alt, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), new Vector3(0.7f, 0.7f, 0.7f), scale));
+                    trees.Add(new Rock(rock, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), new Vector3(0.7f), scale));
                 else
-                    trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), new Vector3(1, 1, 1), new BoundingBox(boxMin, boxMax), treeColors, scale));
+                    trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), treeColors, scale));
             }
         }
 
         private void createHeightMap(Texture2D texture)
         {
-            int width = texture.Width;
-            int height = texture.Height;
+            int width = texture.Width, height = texture.Height;
             heightMapVertices = new Vector3[width, height];
-            Color[] heightMapColors = new Color[texture.Width * texture.Height];
-            texture.GetData(heightMapColors);
-            
-            float heightScale = 40f; // vertical scale multiplier
-
-            
+            Color[] colors = new Color[width * height];
+            texture.GetData(colors);
+            float scale = 40f;
 
             for (int x = 0; x < width; x++)
-            {
                 for (int z = 0; z < height; z++)
-                {
-                    int index = x + z * width;
-                    float y = heightMapColors[index].R / 255f * heightScale; // Grayscale = R
-                    heightMapVertices[x, z] = new Vector3(x, y, z);
-                }
-            }
+                    heightMapVertices[x, z] = new Vector3(x, colors[x + z * width].R / 255f * scale, z);
 
             for (int x = 0; x < width - 1; x++)
-            {
                 for (int z = 0; z < height - 1; z++)
                 {
-                    // Triangle 1
-                    AddVertex(x, z);
-                    AddVertex(x + 1, z);
-                    AddVertex(x, z + 1);
-
-                    // Triangle 2
-                    AddVertex(x + 1, z);
-                    AddVertex(x + 1, z + 1);
-                    AddVertex(x, z + 1);
+                    AddVertex(x, z); AddVertex(x + 1, z); AddVertex(x, z + 1);
+                    AddVertex(x + 1, z); AddVertex(x + 1, z + 1); AddVertex(x, z + 1);
                 }
-            }
 
             void AddVertex(int x, int z)
             {
-                Vector3 position = heightMapVertices[x, z];
-                Vector2 texCoord = new Vector2((float)x / width, (float)z / height);
-                vertices.Add(new VertexPositionNormalTexture(position, Vector3.Up, texCoord)); // normals calculated later
+                vertices.Add(new VertexPositionNormalTexture(heightMapVertices[x, z], Vector3.Up, new Vector2((float)x / width, (float)z / height)));
                 indices.Add((short)(vertices.Count - 1));
             }
-            vertexBuffer = new VertexBuffer(GraphicsDevice,
-                typeof(VertexPositionNormalTexture), vertices.Count, BufferUsage.WriteOnly);
+
+            vertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionNormalTexture), vertices.Count, BufferUsage.WriteOnly);
             vertexBuffer.SetData(vertices.ToArray());
 
-            indexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits,
-                indices.Count, BufferUsage.WriteOnly);
+            indexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, indices.Count, BufferUsage.WriteOnly);
             indexBuffer.SetData(indices.ToArray());
         }
-        private void drawTerrain()
-        {
-            GraphicsDevice.SetVertexBuffer(vertexBuffer);
-            GraphicsDevice.Indices = indexBuffer;
 
-            var effect = _effect3;
-            effect.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
-            effect.Parameters["View"].SetValue(View);
-            effect.Parameters["Projection"].SetValue(Projection);
-            effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["KAmbient"].SetValue(1f);
-
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Apply();
-                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0,
-                    indices.Count / 3);
-            }
-        }
         protected override void Update(GameTime gameTime)
-        {
-            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
+        {   
+            
+            KeyboardState kState = Keyboard.GetState();
+            timeSinceLastInput += gameTime.ElapsedGameTime.TotalSeconds;
 
-            trees.RemoveAll(tree => tree.isExpired);
-            tanque.Update(gameTime);
-
-            foreach (var meshBox in tanque.MeshBoundingBoxes)
+            if (CurrentState == GameState.Menu)
             {
-                foreach (var tree in trees)
+                if (timeSinceLastInput >= inputCooldown)
                 {
-                    if (meshBox.Intersects(tree.hitBox))
+                    if (kState.IsKeyDown(Keys.Up))
                     {
-                        tanque.RevertPosition();
-                        break;
+                        selectedOption = (selectedOption + menuOptions.Length - 1) % menuOptions.Length;
+                        timeSinceLastInput = 0;
+                    }
+                    else if (kState.IsKeyDown(Keys.Down))
+                    {
+                        selectedOption = (selectedOption + 1) % menuOptions.Length;
+                        timeSinceLastInput = 0;
+                    }
+                    else if (kState.IsKeyDown(Keys.Enter))
+                    {
+                        if (selectedOption == 0)
+                            CurrentState = GameState.Playing;
+                        else if (selectedOption == 1)
+                            Exit();
+
+                        timeSinceLastInput = 0;
                     }
                 }
-            }
-            var i = 0;
-            foreach (var tree in trees)
-            {
-                foreach (var shell in tanque.shells)
+                if (kState.IsKeyDown(Keys.M) && !previousKState.IsKeyDown(Keys.M))
                 {
-                    if (shell._position.X > tree.hitBox.Min.X && shell._position.X < tree.hitBox.Max.X)
-                    {
-                        if (shell._position.Z > tree.hitBox.Min.Z && shell._position.Z < tree.hitBox.Max.Z)
+                    isMuted = !isMuted;
+                    MediaPlayer.IsMuted = isMuted;
+                }
+
+            }
+            else if (CurrentState == GameState.Playing)
+            {
+                if (kState.IsKeyDown(Keys.Escape)) Exit();
+
+                trees.RemoveAll(t => t.isExpired);
+                tanque.Update(gameTime);
+
+                foreach (var meshBox in tanque.MeshBoundingBoxes)
+                    foreach (var tree in trees)
+                        if (meshBox.Intersects(tree.hitBox))
                         {
-                            if (shell._position.Y > tree.hitBox.Min.Y && shell._position.Y < tree.hitBox.Max.Y)
-                            {
-                                tree.getHit();
-                                shell.isExpired = true;
-                            }
+                            tanque.RevertPosition();
+                            break;
                         }
-                    }
-                }
-                i++;
-            }
-            View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
 
+                foreach (var tree in trees)
+                    foreach (var shell in tanque.shells)
+                        if (tree.hitBox.Contains(shell._position) != ContainmentType.Disjoint)
+                        {
+                            tree.getHit();
+                            shell.isExpired = true;
+                        }
+
+                View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
+            }
+            previousKState = kState;
 
             base.Update(gameTime);
         }
@@ -258,24 +234,87 @@ namespace TGC.MonoGame.TP
             GraphicsDevice.Clear(Color.Black);
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             GraphicsDevice.BlendState = BlendState.Opaque;
-            drawTerrain();
-            tanque.Draw(GraphicsDevice, View, Projection);
 
-            foreach(var tree in trees){
-                tree.Draw(GraphicsDevice, View, Projection);
-                DrawHitBox(Matrix.CreateScale((tree.hitBox.Max.X - tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y - tree.hitBox.Min.Y) / 2, (tree.hitBox.Max.Z - tree.hitBox.Min.Z) / 2) * Matrix.CreateTranslation((tree.hitBox.Max.X + tree.hitBox.Min.X) / 2, (tree.hitBox.Max.Y + tree.hitBox.Min.Y) / 2 - 2f, (tree.hitBox.Max.Z + tree.hitBox.Min.Z) / 2));
+           if (CurrentState == GameState.Menu)
+            {
+                // Fondo con escena estática
+                _effect3.Parameters["View"].SetValue(MenuView);
+                drawTerrainWithView(MenuView);
+
+                menuTank.Draw(GraphicsDevice, MenuView, Projection);
+                foreach (var tree in trees)
+                    tree.Draw(GraphicsDevice, MenuView, Projection);
+
+                // Menú textual encima
+                spriteBatch.Begin();
+                for (int i = 0; i < menuOptions.Length; i++)
+                {
+                    var color = i == selectedOption ? Color.Yellow : Color.White;
+                    spriteBatch.DrawString(menuFont, menuOptions[i], new Vector2(100, 100 + i * 40), color);
+                }
+                spriteBatch.End();
+            }
+            else if (CurrentState == GameState.Playing)
+            {
+                drawTerrain();
+                tanque.Draw(GraphicsDevice, View, Projection);
+
+                foreach (var tree in trees)
+                {
+                    tree.Draw(GraphicsDevice, View, Projection);
+                    DrawHitBox(tree.hitBox);
+                }
+
+                foreach (var box in tanque.MeshBoundingBoxes)
+                {
+                    DrawHitBox(box);
+                }
             }
 
-            //grass.Draw(Matrix.CreateScale(100, 0, 100) * Matrix.CreateTranslation(1, -2, 1), View, Projection);
-            DrawHitBox(Matrix.CreateScale((tanque.MeshBoundingBoxes[1].Max.X - tanque.MeshBoundingBoxes[1].Min.X) / 2, 2f, (tanque.MeshBoundingBoxes[1].Max.Z - tanque.MeshBoundingBoxes[1].Min.Z) / 2) * Matrix.CreateTranslation((tanque.MeshBoundingBoxes[1].Max.X + tanque.MeshBoundingBoxes[1].Min.X) / 2, 6f, (tanque.MeshBoundingBoxes[1].Max.Z + tanque.MeshBoundingBoxes[1].Min.Z) / 2));
+            base.Draw(gameTime);
         }
 
-        protected override void UnloadContent()
+        private void drawTerrain()
         {
-            // Libero los recursos.
-            Content.Unload();
+            GraphicsDevice.SetVertexBuffer(vertexBuffer);
+            GraphicsDevice.Indices = indexBuffer;
 
-            base.UnloadContent();
+            _effect3.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
+            _effect3.Parameters["View"].SetValue(View);
+            _effect3.Parameters["Projection"].SetValue(Projection);
+            _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
+            _effect3.Parameters["KAmbient"].SetValue(1f);
+
+            foreach (var pass in _effect3.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, indices.Count / 3);
+            }
+        }
+        private void drawTerrainWithView(Matrix view)
+            {
+                GraphicsDevice.SetVertexBuffer(vertexBuffer);
+                GraphicsDevice.Indices = indexBuffer;
+
+                _effect3.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
+                _effect3.Parameters["View"].SetValue(view);
+                _effect3.Parameters["Projection"].SetValue(Projection);
+                _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
+                _effect3.Parameters["KAmbient"].SetValue(1f);
+
+                foreach (var pass in _effect3.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                    GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, indices.Count / 3);
+                }
+            }
+
+        private void DrawHitBox(BoundingBox box)
+        {
+            var scale = (box.Max - box.Min) / 2f;
+            var translation = (box.Max + box.Min) / 2f;
+            var world = Matrix.CreateScale(scale) * Matrix.CreateTranslation(translation);
+            DrawHitBox(world);
         }
 
         private void DrawHitBox(Matrix world)
@@ -283,7 +322,7 @@ namespace TGC.MonoGame.TP
             _effect.Parameters["World"].SetValue(world);
             _effect.Parameters["View"].SetValue(View);
             _effect.Parameters["Projection"].SetValue(Projection);
-            
+
             GraphicsDevice.SetVertexBuffer(VertexBuffer);
             GraphicsDevice.Indices = _indices;
 

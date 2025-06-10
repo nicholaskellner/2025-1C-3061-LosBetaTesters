@@ -45,10 +45,15 @@ public class Tank
 
     public Vector3 PreviousPosition { get; private set; }
     public void RevertPosition() => _position = PreviousPosition;
+    /*
     public BoundingBox BoundingBox => new BoundingBox(
-        _position - new Vector3(1f, 0f, 1f),
-        _position + new Vector3(1f, 2f, 1f)
-    );
+    _position - new Vector3(1f, 0f, 1f),
+    _position + new Vector3(1f, 2f, 1f)
+);*/
+    public BoundingBox BoundingBox => new BoundingBox(
+    _position - new Vector3(1f, 0.5f, 1f),
+    _position + new Vector3(1f, 1.5f, 1f)
+);
     public List<BoundingBox> MeshBoundingBoxes { get; private set; } = new();
     private List<BoundingBox> originalMeshBoundingBoxes = new();
 
@@ -175,7 +180,8 @@ public class Tank
 
         wheelRotationRight += speed * elapsedTime;
         wheelRotationLeft += speed * elapsedTime;
-        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
+        //World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
+        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
         Mouse.SetPosition(910, 490);
 
         // Actualizar el temporizador de recarga
