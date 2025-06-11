@@ -94,7 +94,7 @@ namespace TGC.MonoGame.TP
             spriteBatch = new SpriteBatch(GraphicsDevice);
             menuFont = Content.Load<SpriteFont>(ContentFolderSpriteFonts + "BasicFont");
             menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
-            
+
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Volume = 0.5f; // entre 0 y 1
             MediaPlayer.Play(menuMusic);
@@ -215,8 +215,8 @@ namespace TGC.MonoGame.TP
                 }
 
                 trees.RemoveAll(t => t.isExpired);
-                tanque.Update(gameTime);
-
+                //tanque.Update(gameTime);
+                tanque.Update(gameTime, GetTerrainHeight);
                 foreach (var meshBox in tanque.MeshBoundingBoxes)
                     foreach (var tree in trees)
                         if (meshBox.Intersects(tree.hitBox))
@@ -280,7 +280,7 @@ namespace TGC.MonoGame.TP
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             GraphicsDevice.BlendState = BlendState.Opaque;
 
-           if (CurrentState == GameState.Menu)
+            if (CurrentState == GameState.Menu)
             {
                 // Fondo con escena estática
                 _effect3.Parameters["View"].SetValue(MenuView);
@@ -354,22 +354,22 @@ namespace TGC.MonoGame.TP
             }
         }
         private void drawTerrainWithView(Matrix view)
+        {
+            GraphicsDevice.SetVertexBuffer(vertexBuffer);
+            GraphicsDevice.Indices = indexBuffer;
+
+            _effect3.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
+            _effect3.Parameters["View"].SetValue(view);
+            _effect3.Parameters["Projection"].SetValue(Projection);
+            _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
+            _effect3.Parameters["KAmbient"].SetValue(1f);
+
+            foreach (var pass in _effect3.CurrentTechnique.Passes)
             {
-                GraphicsDevice.SetVertexBuffer(vertexBuffer);
-                GraphicsDevice.Indices = indexBuffer;
-
-                _effect3.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
-                _effect3.Parameters["View"].SetValue(view);
-                _effect3.Parameters["Projection"].SetValue(Projection);
-                _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
-                _effect3.Parameters["KAmbient"].SetValue(1f);
-
-                foreach (var pass in _effect3.CurrentTechnique.Passes)
-                {
-                    pass.Apply();
-                    GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, indices.Count / 3);
-                }
+                pass.Apply();
+                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, indices.Count / 3);
             }
+        }
 
         private void DrawHitBox(BoundingBox box)
         {
@@ -394,5 +394,42 @@ namespace TGC.MonoGame.TP
                 GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.LineList, 0, 0, 12);
             }
         }
+        public float GetTerrainHeight(float worldX, float worldZ)
+{
+    // Primero convertimos la posición world a índice del heightmap
+    // (Tienes que adaptar estos valores según la escala y offset de tu terreno)
+    float terrainScale = 10f;     // el scale usado en createHeightMap y el drawTerrain
+    float offset = 200f;          // el offset negativo usado en drawTerrain para mover el terreno
+
+    // Posición local en el heightmap
+    float localX = (worldX + offset) / terrainScale;
+    float localZ = (worldZ + offset) / terrainScale;
+
+    int x0 = (int)Math.Floor(localX);
+    int z0 = (int)Math.Floor(localZ);
+    int x1 = x0 + 1;
+    int z1 = z0 + 1;
+
+    // Validar límites para no salir del arreglo
+    if (x0 < 0 || z0 < 0 || x1 >= heightMapVertices.GetLength(0) || z1 >= heightMapVertices.GetLength(1))
+        return 0f; // fuera del terreno
+
+    // Fracciones para interpolar
+    float fracX = localX - x0;
+    float fracZ = localZ - z0;
+
+    // Obtener alturas de los 4 vértices cercanos
+    float h00 = heightMapVertices[x0, z0].Y;
+    float h10 = heightMapVertices[x1, z0].Y;
+    float h01 = heightMapVertices[x0, z1].Y;
+    float h11 = heightMapVertices[x1, z1].Y;
+
+    // Interpolación bilineal
+    float h0 = MathHelper.Lerp(h00, h10, fracX);
+    float h1 = MathHelper.Lerp(h01, h11, fracX);
+    float height = MathHelper.Lerp(h0, h1, fracZ);
+
+    return height;
+}
     }
 }

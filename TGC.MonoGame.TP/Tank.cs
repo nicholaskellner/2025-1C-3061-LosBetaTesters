@@ -24,6 +24,7 @@ public class Tank
     private SoundEffect shootSound;
     SoundEffect movementSound;
     SoundEffectInstance movementSoundInstance;
+    public delegate float TerrainHeightFunction(float x, float z);
 
     private float yaw = 0;
     private float turret_yaw = 0;
@@ -112,136 +113,136 @@ public class Tank
         GenerateOriginalMeshBoundingBoxes();
     }
 
-    public void Update(GameTime gameTime)
+    public void Update(GameTime gameTime, TerrainHeightFunction getHeight)
+{
+    PreviousPosition = _position;
+    bool isMoving = false;
+    elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
+    speed = 0;
+
+    if (Keyboard.GetState().IsKeyDown(Keys.W))
     {
-        PreviousPosition = _position;
-        bool isMoving = false;
-        elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
-        //Falta agregar acceleracion si es que los tanques tienen
-        speed = 0;
-        if (Keyboard.GetState().IsKeyDown(Keys.W))
+        isMoving = true;
+        speed = 1f;
+        _position += _rotation * speed * elapsedTime * 3f;
+    }
+
+    if (Keyboard.GetState().IsKeyDown(Keys.S))
+    {
+        isMoving = true;
+        speed = -1f;
+        _position += _rotation * speed * elapsedTime * 3f;
+    }
+
+    if (Keyboard.GetState().IsKeyDown(Keys.A))
+    {
+        isMoving = true;
+        if (speed < 0)
         {
-            isMoving = true;
-            speed = 1f;
-            _position += _rotation * speed * elapsedTime * 3f;
-        }
-
-        if (Keyboard.GetState().IsKeyDown(Keys.S))
-        {
-            isMoving = true;
-            speed = -1f;
-            _position += _rotation * speed * elapsedTime * 3f;
-        }
-
-        if (Keyboard.GetState().IsKeyDown(Keys.A))
-        {
-            isMoving = true;
-            if (speed < 0)
-            {
-                yaw -= rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
-                wheelRotationRight -= elapsedTime;
-            }
-
-            else
-            {
-                yaw += rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
-                wheelRotationRight += elapsedTime;
-            }
-            _position += _rotation * 0.01f * elapsedTime;
-        }
-
-        if (Keyboard.GetState().IsKeyDown(Keys.D))
-        {
-            isMoving = true;
-            if (speed < 0)
-            {
-                yaw += rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
-                wheelRotationLeft -= elapsedTime;
-            }
-
-            else
-            {
-                yaw -= rotationSpeed * elapsedTime;
-                _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
-                wheelRotationLeft += elapsedTime;
-            }
-            _position += _rotation * 0.015f;
-        }
-
-        if (Mouse.GetState().X > 910)
-        {
-            turret_yaw -= elapsedTime * 0.1f;
-        }
-        else if (Mouse.GetState().X < 910)
-        {
-            turret_yaw += elapsedTime * 0.1f;
-        }
-
-        if (Mouse.GetState().Y > 490)
-        {
-            turret_pitch += elapsedTime * 0.1f;
-            turret_pitch = Math.Min(turret_pitch, 0.2f);
-        }
-        else if (Mouse.GetState().Y < 490)
-        {
-            turret_pitch -= elapsedTime * 0.1f;
-            turret_pitch = Math.Max(turret_pitch, -0.2f);
-        }
-
-        wheelRotationRight += speed * elapsedTime;
-        wheelRotationLeft += speed * elapsedTime;
-        //World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position) * Matrix.CreateTranslation(0, 1f, 0);
-        World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
-        Mouse.SetPosition(910, 490);
-
-        // Actualizar el temporizador de recarga
-        reloadTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-        if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0f)
-        {
-            shootSound.Play();
-            var ms = Mouse.GetState();
-            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            reloadTimer -= dt;
-
-            Matrix mYaw = Matrix.CreateRotationY(turret_yaw + yaw);
-            Matrix mPitch = Matrix.CreateRotationX(-turret_pitch);
-            turretRotation = Vector3.Transform(Vector3.Forward, mPitch * mYaw);
-            turretRotation.Normalize();
-
-            Vector3 shellPos = _position
-                                + turretRotation * 12f + new Vector3(0, 1f, 0);
-
-
-            Vector3 shellDir = turretRotation;
-
-            // Crear la shell
-            shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
-            reloadTimer = reloadTime;
-        }
-        if (isMoving)
-        {
-            if (movementSoundInstance.State != SoundState.Playing)
-                movementSoundInstance.Play();
+            yaw -= rotationSpeed * elapsedTime;
+            _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
+            wheelRotationRight -= elapsedTime;
         }
         else
         {
-            if (movementSoundInstance.State == SoundState.Playing)
-                movementSoundInstance.Pause();
+            yaw += rotationSpeed * elapsedTime;
+            _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
+            wheelRotationRight += elapsedTime;
         }
-
-        // Actualizar balas activas
-        foreach (var shell in shells)
-        {
-            shell.Update(gameTime);
-        }
-        shells.RemoveAll(shell => shell.isExpired);
-        UpdateMeshBoundingBoxes();
-
+        _position += _rotation * 0.01f * elapsedTime;
     }
+
+    if (Keyboard.GetState().IsKeyDown(Keys.D))
+    {
+        isMoving = true;
+        if (speed < 0)
+        {
+            yaw += rotationSpeed * elapsedTime;
+            _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(rotationSpeed * elapsedTime));
+            wheelRotationLeft -= elapsedTime;
+        }
+        else
+        {
+            yaw -= rotationSpeed * elapsedTime;
+            _rotation = Vector3.Transform(_rotation, Matrix.CreateRotationY(-rotationSpeed * elapsedTime));
+            wheelRotationLeft += elapsedTime;
+        }
+        _position += _rotation * 0.015f;
+    }
+
+    if (Mouse.GetState().X > 910)
+    {
+        turret_yaw -= elapsedTime * 0.1f;
+    }
+    else if (Mouse.GetState().X < 910)
+    {
+        turret_yaw += elapsedTime * 0.1f;
+    }
+
+    if (Mouse.GetState().Y > 490)
+    {
+        turret_pitch += elapsedTime * 0.1f;
+        turret_pitch = Math.Min(turret_pitch, 0.2f);
+    }
+    else if (Mouse.GetState().Y < 490)
+    {
+        turret_pitch -= elapsedTime * 0.1f;
+        turret_pitch = Math.Max(turret_pitch, -0.2f);
+    }
+
+    wheelRotationRight += speed * elapsedTime;
+    wheelRotationLeft += speed * elapsedTime;
+
+        // ACTUALIZAR ALTURA DEL TANQUE CON EL TERRENO
+        //_position.Y = getHeight(_position.X, _position.Z);
+    _position.Y = getHeight(_position.X, _position.Z) - 18f;
+
+    float modelBaseCorrection = -5f;
+    
+    World = Matrix.CreateScale(0.02f) * Matrix.CreateRotationY(yaw) * Matrix.CreateTranslation(_position);
+    Mouse.SetPosition(910, 490);
+
+    // Actualizar el temporizador de recarga
+    reloadTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+    if (Keyboard.GetState().IsKeyDown(Keys.Space) && reloadTimer <= 0.0f)
+    {
+        shootSound.Play();
+        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        reloadTimer -= dt;
+
+        Matrix mYaw = Matrix.CreateRotationY(turret_yaw + yaw);
+        Matrix mPitch = Matrix.CreateRotationX(-turret_pitch);
+        turretRotation = Vector3.Transform(Vector3.Forward, mPitch * mYaw);
+        turretRotation.Normalize();
+
+        Vector3 shellPos = _position + turretRotation * 12f + new Vector3(0, 1f, 0);
+        Vector3 shellDir = turretRotation;
+
+        shells.Add(new Shell(ShellModel, ShellEffect, shellPos, shellDir));
+        reloadTimer = reloadTime;
+    }
+
+    if (isMoving)
+    {
+        if (movementSoundInstance.State != SoundState.Playing)
+            movementSoundInstance.Play();
+    }
+    else
+    {
+        if (movementSoundInstance.State == SoundState.Playing)
+            movementSoundInstance.Pause();
+    }
+
+    foreach (var shell in shells)
+    {
+        shell.Update(gameTime);
+    }
+    shells.RemoveAll(shell => shell.isExpired);
+
+    UpdateMeshBoundingBoxes();
+}
+
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
     {
