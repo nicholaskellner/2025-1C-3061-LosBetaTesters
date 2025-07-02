@@ -17,18 +17,37 @@ uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
 
-float3 ambientColor;
-float KAmbient; 
+uniform float3 ambientColor;
+uniform float KAmbient; 
+
+Texture2D Texture;
+Texture2D Texture2;
+
+sampler2D TextureSampler = sampler_state
+{
+    Texture = <Texture>;
+	AddressU = Wrap;   // or Clamp, Mirror
+    AddressV = Wrap; 
+};
+
+sampler2D TextureSampler2 = sampler_state
+{
+    Texture = <Texture2>;
+	AddressU = Wrap;   // or Clamp, Mirror
+    AddressV = Wrap; 
+};
 
 struct VertexShaderInput
 {
 	float4 Position : POSITION0;
+	float2 TextureCoordinate : TEXCOORD0;
 };
 
 struct VertexShaderOutput
 {
-    float4 Position : SV_Position0;
-	float3 color : COLOR;
+    float4 Position : SV_Position;
+	float2 TextureCoordinate : TEXCOORD0;
+	float height : TEXCOORD1;
 };
 
 VertexShaderOutput MainVS(in VertexShaderInput input)
@@ -38,18 +57,23 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     // Model space to World space
     float4 worldPosition = mul(input.Position, World);
     // World space to View space
-    float4 viewPosition = mul(worldPosition, View);	
+    float4 viewPosition = mul(worldPosition, View);
 	// View space to Projection space
     output.Position = mul(viewPosition, Projection);
-	output.color = float3(1,worldPosition.y,1);
+	output.TextureCoordinate = worldPosition.xz/2;
+	output.height = worldPosition.y/10;
     return output;
 }
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-	float3 color = saturate(ambientColor * KAmbient)*  input.color;
-	float4 tecColor = float4(color*0.05+0.3,1);
-    return tecColor;
+	float4 texCol = tex2D(TextureSampler, input.TextureCoordinate);
+	float4 texCol2 = tex2D(TextureSampler2, input.TextureCoordinate);
+	float4 color = float4(saturate(ambientColor * KAmbient) * texCol.rgb,texCol.a);
+	float4 color2 = float4(saturate(ambientColor * KAmbient) * texCol2.rgb,texCol2.a);
+	float h = saturate(input.height);
+	float4 finalColor = lerp(color2, color, h);
+	return finalColor;
 }
 
 technique BasicColorDrawing

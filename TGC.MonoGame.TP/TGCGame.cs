@@ -62,6 +62,8 @@ namespace TGC.MonoGame.TP
         private bool isMuted = false;
         private KeyboardState previousKState;
         private KeyboardState previousKeyboardState;
+        private Texture2D Texture23;
+        private Texture2D Texture2;
 
         protected override void Initialize()
         {
@@ -106,6 +108,8 @@ namespace TGC.MonoGame.TP
             _effect = Content.Load<Effect>(ContentFolderEffects + "ShaderHitbox");
             _effect2 = Content.Load<Effect>(ContentFolderEffects + "ShaderTree");
             _effect3 = Content.Load<Effect>(ContentFolderEffects + "ShaderTerrain");
+            Texture23 = Content.Load<Texture2D>(ContentFolderTextures + "pasto");
+            Texture2 = Content.Load<Texture2D>(ContentFolderTextures + "tierra");
 
             Texture2D heightMapTexture = Content.Load<Texture2D>(ContentFolder3D + "heightmap");
             createHeightMap(heightMapTexture);
@@ -346,6 +350,8 @@ namespace TGC.MonoGame.TP
             _effect3.Parameters["Projection"].SetValue(Projection);
             _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
             _effect3.Parameters["KAmbient"].SetValue(1f);
+            _effect3.Parameters["Texture"].SetValue(Texture23);
+            _effect3.Parameters["Texture2"].SetValue(Texture2);
 
             foreach (var pass in _effect3.CurrentTechnique.Passes)
             {
@@ -363,6 +369,8 @@ namespace TGC.MonoGame.TP
             _effect3.Parameters["Projection"].SetValue(Projection);
             _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
             _effect3.Parameters["KAmbient"].SetValue(1f);
+            _effect3.Parameters["Texture"].SetValue(Texture23);
+            _effect3.Parameters["Texture2"].SetValue(Texture2);
 
             foreach (var pass in _effect3.CurrentTechnique.Passes)
             {
