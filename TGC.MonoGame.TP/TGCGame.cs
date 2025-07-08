@@ -20,6 +20,7 @@ namespace TGC.MonoGame.TP
         private enum GameState { Menu, Playing, Paused, Exit }
         private GameState CurrentState = GameState.Menu;
 
+
         public TGCGame()
         {
             Graphics = new GraphicsDeviceManager(this);
@@ -68,6 +69,13 @@ namespace TGC.MonoGame.TP
         private VertexBuffer fullscreenQuad;
         private Effect skyEffect;
         private DebugDraw debugDraw;
+        private int kills = 0;
+        private TimeSpan gameTimeElapsed = TimeSpan.Zero;
+        private SpriteFont hudFont;
+        Texture2D pixel;
+        List<EnemyTank> enemies = new List<EnemyTank>();
+        const int ENEMY_COUNT = 10;
+        
 
         protected override void Initialize()
         {
@@ -92,6 +100,8 @@ namespace TGC.MonoGame.TP
             };
             for (int i = 0; i < 8; i++) _vertices[i] = new VertexPosition(verts[i]);
             VertexBuffer.SetData(_vertices);
+
+
             base.Initialize();
         }
 
@@ -99,6 +109,9 @@ namespace TGC.MonoGame.TP
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
             menuFont = Content.Load<SpriteFont>(ContentFolderSpriteFonts + "BasicFont");
+            hudFont = Content.Load<SpriteFont>(ContentFolderSpriteFonts + "BasicFont");
+            pixel = new Texture2D(GraphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
             menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
 
             MediaPlayer.IsRepeating = true;
@@ -118,7 +131,7 @@ namespace TGC.MonoGame.TP
             debugDraw = new DebugDraw(GraphicsDevice);
 
             //------------------------------------------------------------------------------------------------------
-            //para el cielo
+            // para el cielo
             VertexPositionTexture[] vertices = new VertexPositionTexture[6];
 
             vertices[0] = new VertexPositionTexture(new Vector3(-1, 1, 0), new Vector2(0, 0));
@@ -131,8 +144,10 @@ namespace TGC.MonoGame.TP
             fullscreenQuad = new VertexBuffer(GraphicsDevice, typeof(VertexPositionTexture), 6, BufferUsage.WriteOnly);
             fullscreenQuad.SetData(vertices);
             //------------------------------------------------------------------------------------------------------
+
             Texture2D heightMapTexture = Content.Load<Texture2D>(ContentFolder3D + "heightmap");
             createHeightMap(heightMapTexture);
+
             tanque = new Tank(Content, GraphicsDevice);
             menuTank = new Tank(Content, GraphicsDevice);
             menuTank._position = new Vector3(0, 0, 0);
@@ -158,7 +173,23 @@ namespace TGC.MonoGame.TP
                 else
                     trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), treeColors, scale));
             }
+
+            // Crear enemigos
+            enemies = new List<EnemyTank>();
+            Random random = new Random();
+
+            for (int i = 0; i < 10; i++)
+            {
+                EnemyTank enemy = new EnemyTank(Content, GraphicsDevice);
+                enemy._position = new Vector3(
+                    random.Next(-100, 100),
+                    0,
+                    random.Next(-100, 100)
+                );
+                enemies.Add(enemy);
+            }
         }
+
 
         private void createHeightMap(Texture2D texture)
         {
@@ -233,35 +264,69 @@ namespace TGC.MonoGame.TP
 
             else if (CurrentState == GameState.Playing)
             {
+                gameTimeElapsed += gameTime.ElapsedGameTime;
                 if (kState.IsKeyDown(Keys.Escape) && !previousKState.IsKeyDown(Keys.Escape))
                 {
                     CurrentState = GameState.Paused;
                 }
 
                 trees.RemoveAll(t => t.isExpired);
-                //tanque.Update(gameTime);
+
+                // Actualizar tanque jugador
                 tanque.Update(gameTime, GetTerrainHeight);
+
+                // Colisiones OBB tanque jugador contra árboles (como ya tenías)
                 foreach (var obb in tanque.MeshOBBs)
+                {
+                    foreach (var tree in trees)
                     {
-                        foreach (var tree in trees)
+                        if (CollisionHelper.OBBvsAABB(obb, tree.hitBox))
                         {
-                            if (CollisionHelper.OBBvsAABB(obb, tree.hitBox))
-                            {
-                                tanque.RevertPosition();
-                                break;
-                            }
+                            tanque.RevertPosition();
+                            break;
                         }
                     }
+                }
 
-
+                // Colisiones balas tanque jugador contra árboles
                 foreach (var tree in trees)
+                {
                     foreach (var shell in tanque.shells)
+                    {
                         if (tree.hitBox.Contains(shell._position) != ContainmentType.Disjoint)
                         {
                             tree.getHit();
                             shell.isExpired = true;
                         }
+                    }
+                }
 
+                // --- NUEVO: Actualizar y manejar tanques enemigos ---
+                foreach (var enemy in enemies)
+                {
+                    enemy.Update(gameTime, GetTerrainHeight, tanque._position); // que persigan o hagan lógica
+
+                    // Colisiones balas enemigos contra tanque jugador con probabilidad de acierto
+                    foreach (var shell in enemy.shells)
+                    {
+                        // Supongo que tanque.BoundingBox es el AABB del tanque jugador
+                        if (tanque.BoundingBox.Intersects(shell.BoundingBox)) 
+                        {
+                            // Aplicar daño con un porcentaje de acierto
+                            Random rnd = new Random();
+                            if (rnd.NextDouble() < 0.5) // 50% de acierto, cambiá este valor como quieras
+                            {
+                                tanque.TakeDamage(10);
+                            }
+                            shell.isExpired = true;
+                        }
+                    }
+
+                    // Eliminar balas expiradas de enemigos
+                    enemy.shells.RemoveAll(s => s.isExpired);
+                }
+
+                // Crear la cámara
                 View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
             }
 
@@ -304,75 +369,105 @@ namespace TGC.MonoGame.TP
 
 
         protected override void Draw(GameTime gameTime)
+{
+    GraphicsDevice.Clear(Color.Black);
+    GraphicsDevice.DepthStencilState = DepthStencilState.None;
+    GraphicsDevice.BlendState = BlendState.Opaque;
+
+    // Dibujo del cielo (tu fullscreen quad)
+    skyEffect.CurrentTechnique.Passes[0].Apply();
+    GraphicsDevice.SetVertexBuffer(fullscreenQuad);
+    GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
+
+    GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+
+    if (CurrentState == GameState.Menu)
+    {
+        _effect3.Parameters["View"].SetValue(MenuView);
+        drawTerrainWithView(MenuView);
+
+        //menuTank.Draw(GraphicsDevice, MenuView, Projection);
+        foreach (var tree in trees)
+            tree.Draw(GraphicsDevice, MenuView, Projection);
+
+        spriteBatch.Begin();
+        for (int i = 0; i < menuOptions.Length; i++)
         {
-            GraphicsDevice.Clear(Color.Black);
-            GraphicsDevice.DepthStencilState = DepthStencilState.None;
-            GraphicsDevice.BlendState = BlendState.Opaque;
-
-            skyEffect.CurrentTechnique.Passes[0].Apply();
-            GraphicsDevice.SetVertexBuffer(fullscreenQuad);
-            GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
-
-            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-
-            if (CurrentState == GameState.Menu)
-            {
-                // Fondo con escena estática
-                _effect3.Parameters["View"].SetValue(MenuView);
-                drawTerrainWithView(MenuView);
-
-                //menuTank.Draw(GraphicsDevice, MenuView, Projection);
-                foreach (var tree in trees)
-                    tree.Draw(GraphicsDevice, MenuView, Projection);
-
-                // Menú textual encima
-                spriteBatch.Begin();
-                for (int i = 0; i < menuOptions.Length; i++)
-                {
-                    var color = i == selectedOption ? Color.Yellow : Color.White;
-                    spriteBatch.DrawString(menuFont, menuOptions[i], new Vector2(100, 100 + i * 40), color);
-                }
-                spriteBatch.End();
-            }
-            else if (CurrentState == GameState.Playing)
-            {
-                drawTerrain();
-                tanque.Draw(GraphicsDevice, View, Projection,cameraPosition);
-
-                foreach (var tree in trees)
-                {
-                    tree.Draw(GraphicsDevice, View, Projection);
-                    DrawHitBox(tree.hitBox);
-                }
-                foreach (var obb in tanque.MeshOBBs)
-                {
-                    debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
-                }
-/*                 foreach (var box in tanque.MeshBoundingBoxes)
-                {
-                    DrawHitBox(box);
-                } */
-            }
-            else if (CurrentState == GameState.Paused)
-            {
-                // Fondo del juego como si estuviera congelado
-                drawTerrain();
-                tanque.Draw(GraphicsDevice, View, Projection,cameraPosition);
-                foreach (var tree in trees)
-                    tree.Draw(GraphicsDevice, View, Projection);
-
-                // Menú encima
-                spriteBatch.Begin();
-                for (int i = 0; i < pauseMenuOptions.Length; i++)
-                {
-                    var color = i == pauseSelectedOption ? Color.Yellow : Color.White;
-                    spriteBatch.DrawString(menuFont, pauseMenuOptions[i], new Vector2(100, 100 + i * 40), color);
-                }
-                spriteBatch.End();
-            }
-
-            base.Draw(gameTime);
+            var color = i == selectedOption ? Color.Yellow : Color.White;
+            spriteBatch.DrawString(menuFont, menuOptions[i], new Vector2(100, 100 + i * 40), color);
         }
+        spriteBatch.End();
+    }
+    else if (CurrentState == GameState.Playing)
+    {
+        drawTerrain();
+
+        // Dibuja tanque jugador
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+
+        // Dibuja tanques enemigos
+        foreach (var enemy in enemies)
+        {
+            enemy.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        }
+
+        foreach (var tree in trees)
+        {
+            tree.Draw(GraphicsDevice, View, Projection);
+            DrawHitBox(tree.hitBox);
+        }
+
+        foreach (var obb in tanque.MeshOBBs)
+        {
+            debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
+        }
+
+        // --------------------------
+        // HUD: Barra de vida, muertes, tiempo
+        // --------------------------
+        spriteBatch.Begin();
+
+        int barWidth = 200;
+        int barHeight = 20;
+        float healthPercent = (float)tanque.CurrentHealth / tanque.MaxHealth;
+
+        Rectangle backgroundBar = new Rectangle(20, 20, barWidth, barHeight);
+        Rectangle healthBar = new Rectangle(20, 20, (int)(barWidth * healthPercent), barHeight);
+
+        spriteBatch.Draw(pixel, backgroundBar, Color.DarkRed);
+        spriteBatch.Draw(pixel, healthBar, Color.Red);
+
+        string healthText = $"Vida: {tanque.CurrentHealth} / {tanque.MaxHealth}";
+        spriteBatch.DrawString(menuFont, healthText, new Vector2(20, 45), Color.White);
+
+        string killsText = $"Muertes: {kills}";
+        spriteBatch.DrawString(menuFont, killsText, new Vector2(20, 70), Color.White);
+
+        string timeText = $"Tiempo: {gameTimeElapsed.Minutes:D2}:{gameTimeElapsed.Seconds:D2}";
+        spriteBatch.DrawString(menuFont, timeText, new Vector2(20, 95), Color.White);
+
+        spriteBatch.End();
+    }
+    else if (CurrentState == GameState.Paused)
+    {
+        drawTerrain();
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        foreach (var tree in trees)
+            tree.Draw(GraphicsDevice, View, Projection);
+
+        spriteBatch.Begin();
+        for (int i = 0; i < pauseMenuOptions.Length; i++)
+        {
+            var color = i == pauseSelectedOption ? Color.Yellow : Color.White;
+            spriteBatch.DrawString(menuFont, pauseMenuOptions[i], new Vector2(100, 100 + i * 40), color);
+        }
+        spriteBatch.End();
+    }
+
+    base.Draw(gameTime);
+}
+
+
 
         private void drawTerrain()
         {

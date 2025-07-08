@@ -18,6 +18,16 @@ public class Tank
     private Texture2D TreadmillTexture;
     public Vector3 _rotation { get; set; } = Vector3.Forward;
     public Vector3 turretRotation { get; set; } = Vector3.Forward;
+    public int MaxHealth { get; private set; } = 100;
+    public int CurrentHealth { get; private set; } = 100;
+
+    public void TakeDamage(int amount)
+    {
+        CurrentHealth -= amount;
+        if (CurrentHealth < 0) CurrentHealth = 0;
+    }
+
+public bool IsDead => CurrentHealth <= 0;
     private GraphicsDevice graphicsDevice;
     private ContentManager content;
     private float elapsedTime = 0;

@@ -9,7 +9,7 @@ public class Shell
     private Effect Effect { get; set; }
     public Vector3 _direction;
     public Vector3 _position;
-    private Vector3 gravity = new Vector3(0,-9.8f,0);
+    private Vector3 gravity = new Vector3(0, -9.8f, 0);
     private Matrix World { get; set; }
 
     public bool isExpired = false;
@@ -60,6 +60,18 @@ public class Shell
                 //effect.EnableDefaultLighting();
             }
             mesh.Draw();
+        }
+    }
+    
+    public BoundingBox BoundingBox
+    {
+        get
+        {
+            float size = 0.2f; // tamaño del bounding box, ajustalo si querés
+            return new BoundingBox(
+                _position - new Vector3(size, size, size),
+                _position + new Vector3(size, size, size)
+            );
         }
     }
 }
