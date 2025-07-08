@@ -64,6 +64,7 @@ namespace TGC.MonoGame.TP
         private KeyboardState previousKeyboardState;
         private Texture2D Texture23;
         private Texture2D Texture2;
+        Vector3 cameraPosition = new Vector3(15, 5, 0);
 
         protected override void Initialize()
         {
@@ -290,7 +291,7 @@ namespace TGC.MonoGame.TP
                 _effect3.Parameters["View"].SetValue(MenuView);
                 drawTerrainWithView(MenuView);
 
-                menuTank.Draw(GraphicsDevice, MenuView, Projection);
+                //menuTank.Draw(GraphicsDevice, MenuView, Projection);
                 foreach (var tree in trees)
                     tree.Draw(GraphicsDevice, MenuView, Projection);
 
@@ -306,7 +307,7 @@ namespace TGC.MonoGame.TP
             else if (CurrentState == GameState.Playing)
             {
                 drawTerrain();
-                tanque.Draw(GraphicsDevice, View, Projection);
+                tanque.Draw(GraphicsDevice, View, Projection,cameraPosition);
 
                 foreach (var tree in trees)
                 {
@@ -323,7 +324,7 @@ namespace TGC.MonoGame.TP
             {
                 // Fondo del juego como si estuviera congelado
                 drawTerrain();
-                tanque.Draw(GraphicsDevice, View, Projection);
+                tanque.Draw(GraphicsDevice, View, Projection,cameraPosition);
                 foreach (var tree in trees)
                     tree.Draw(GraphicsDevice, View, Projection);
 

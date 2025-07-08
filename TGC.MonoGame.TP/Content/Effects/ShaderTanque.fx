@@ -1,77 +1,91 @@
 ﻿#if OPENGL
-	#define SV_POSITION POSITION
-	#define VS_SHADERMODEL vs_3_0
-	#define PS_SHADERMODEL ps_3_0
+    #define SV_POSITION POSITION
+    #define VS_SHADERMODEL vs_3_0
+    #define PS_SHADERMODEL ps_3_0
 #else
-	#define VS_SHADERMODEL vs_4_0_level_9_1
-	#define PS_SHADERMODEL ps_4_0_level_9_1
+    #define SV_POSITION SV_Position
+    #define VS_SHADERMODEL vs_4_0_level_9_1
+    #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
-
-// Custom Effects - https://docs.monogame.net/articles/content/custom_effects.html
-// High-level shader language (HLSL) - https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl
-// Programming guide for HLSL - https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-pguide
-// Reference for HLSL - https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-reference
-// HLSL Semantics - https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics
 
 uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
 
-float Time = 0;
+uniform float3 lightPosition;
+uniform float3 cameraPosition;
 
-float3 ambientColor;
-float KAmbient; 
-float3 lightPosition;
+uniform float3 ambientColor;
+uniform float KAmbient;
+uniform float3 diffuseColor;
+uniform float3 specularColor;
+uniform float shininess;
 
 Texture2D Texture;
 
 sampler2D TextureSampler = sampler_state
 {
     Texture = <Texture>;
+    MipFilter = LINEAR;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
 };
 
 struct VertexShaderInput
 {
-	float4 Position : POSITION0;
-	float2 TextureCoordinate : TEXCOORD0;
+    float4 Position : POSITION0;
+    float3 Normal   : NORMAL0;
+    float2 TexCoord : TEXCOORD0;
 };
 
 struct VertexShaderOutput
 {
-    float4 Position : SV_Position0;
-	float2 TextureCoordinate : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float3 Normal : TEXCOORD0;
+    float2 TexCoord : TEXCOORD1;
+    float3 WorldPos : TEXCOORD2;
 };
 
-VertexShaderOutput MainVS(in VertexShaderInput input)
+VertexShaderOutput MainVS(VertexShaderInput input)
 {
-    // Clear the output
-	VertexShaderOutput output = (VertexShaderOutput)0;
-    // Model space to World space
-    float4 worldPosition = mul(input.Position, World);
-    // World space to View space
-    float4 viewPosition = mul(worldPosition, View);	
-	// View space to Projection space
-    output.Position = mul(viewPosition, Projection);
+    VertexShaderOutput output;
 
-	output.TextureCoordinate = input.TextureCoordinate;
+    float4 worldPos = mul(input.Position, World);
+    output.Position = mul(mul(worldPos, View), Projection);
+
+    output.Normal = normalize(mul(float4(input.Normal, 0.0), World).xyz);
+    output.WorldPos = worldPos.xyz;
+    output.TexCoord = input.TexCoord;
+
     return output;
 }
 
-
-
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-	float4 texCol = tex2D(TextureSampler, input.TextureCoordinate);
-	float4 color = float4(saturate(ambientColor * KAmbient) * texCol.rgb,texCol.a);
-	return color;
+    float3 normal = normalize(input.Normal);
+    float3 lightDir = normalize(lightPosition - input.WorldPos);
+    float3 viewDir = normalize(cameraPosition - input.WorldPos);
+    float3 halfVec = normalize(lightDir + viewDir);
+
+    float diff = max(dot(normal, lightDir), 0);
+    float spec = pow(max(dot(normal, halfVec), 0), shininess);
+
+    float3 lighting =
+        ambientColor * KAmbient +
+        diffuseColor * diff +
+        specularColor * spec;
+
+    float4 texColor = tex2D(TextureSampler, input.TexCoord);
+    return float4(texColor.rgb * lighting, texColor.a);
 }
 
 technique BasicColorDrawing
 {
-	pass P0
-	{
-		VertexShader = compile VS_SHADERMODEL MainVS();
-		PixelShader = compile PS_SHADERMODEL MainPS();
-	}
+    pass P0
+    {
+        VertexShader = compile VS_SHADERMODEL MainVS();
+        PixelShader = compile PS_SHADERMODEL MainPS();
+    }
 };
+
 
