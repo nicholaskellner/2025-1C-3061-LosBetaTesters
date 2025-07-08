@@ -43,6 +43,12 @@
 /processorParam:DebugMode=Auto
 /build:Effects/ShaderTree.fx
 
+#begin Effects/SkyGradientEffect.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/SkyGradientEffect.fx
+
 #begin Models/ground_grass.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
