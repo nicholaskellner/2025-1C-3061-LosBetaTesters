@@ -17,7 +17,7 @@ namespace TGC.MonoGame.TP
         public const string ContentFolderSpriteFonts = "SpriteFonts/";
         public const string ContentFolderTextures = "Models/textures_mod/";
 
-        private enum GameState { Menu, Playing, Paused, Exit }
+        private enum GameState { Menu, Playing, Paused, Exit, GameOver }
         private GameState CurrentState = GameState.Menu;
 
 
@@ -75,7 +75,10 @@ namespace TGC.MonoGame.TP
         Texture2D pixel;
         List<EnemyTank> enemies = new List<EnemyTank>();
         const int ENEMY_COUNT = 10;
+        Random r = new Random();
+        private Texture2D whitePixel;
         
+
 
         protected override void Initialize()
         {
@@ -129,6 +132,10 @@ namespace TGC.MonoGame.TP
             Texture2 = Content.Load<Texture2D>(ContentFolderTextures + "tierra");
             skyEffect = Content.Load<Effect>(ContentFolderEffects + "SkyGradientEffect");
             debugDraw = new DebugDraw(GraphicsDevice);
+
+            whitePixel = new Texture2D(GraphicsDevice, 1, 1);
+            whitePixel.SetData(new[] { Color.White });
+
 
             //------------------------------------------------------------------------------------------------------
             // para el cielo
@@ -264,6 +271,11 @@ namespace TGC.MonoGame.TP
 
             else if (CurrentState == GameState.Playing)
             {
+                if (tanque.IsDead)
+                {
+                    CurrentState = GameState.GameOver;
+                    return;
+                }
                 gameTimeElapsed += gameTime.ElapsedGameTime;
                 if (kState.IsKeyDown(Keys.Escape) && !previousKState.IsKeyDown(Keys.Escape))
                 {
@@ -304,13 +316,13 @@ namespace TGC.MonoGame.TP
                 // --- NUEVO: Actualizar y manejar tanques enemigos ---
                 foreach (var enemy in enemies)
                 {
-                    enemy.Update(gameTime, GetTerrainHeight, tanque._position); // que persigan o hagan lógica
+                    enemy.Update(gameTime, GetTerrainHeight, tanque._position, tanque.shells,enemies); // que persigan o hagan lógica
 
                     // Colisiones balas enemigos contra tanque jugador con probabilidad de acierto
                     foreach (var shell in enemy.shells)
                     {
                         // Supongo que tanque.BoundingBox es el AABB del tanque jugador
-                        if (tanque.BoundingBox.Intersects(shell.BoundingBox)) 
+                        if (tanque.BoundingBox.Intersects(shell.BoundingBox))
                         {
                             // Aplicar daño con un porcentaje de acierto
                             Random rnd = new Random();
@@ -322,9 +334,23 @@ namespace TGC.MonoGame.TP
                         }
                     }
 
+
                     // Eliminar balas expiradas de enemigos
                     enemy.shells.RemoveAll(s => s.isExpired);
+                     
                 }
+
+                 foreach (var shell in tanque.shells)
+                    {
+                        foreach (var enemy in enemies)
+                        {
+                            if (!enemy.IsDead && enemy.BoundingBox.Intersects(shell.BoundingBox))
+                            {
+                                enemy.TakeDamage(10); // o el daño que quieras
+                                shell.isExpired = true;
+                            }
+                        }
+                    }
 
                 // Crear la cámara
                 View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
@@ -362,6 +388,13 @@ namespace TGC.MonoGame.TP
                     }
                 }
             }
+            else if (CurrentState == GameState.GameOver)
+            {
+                if (Keyboard.GetState().IsKeyDown(Keys.R) && !previousKState.IsKeyDown(Keys.R))
+                {
+                    RestartGame();
+                }
+            }
 
             previousKState = kState;
             base.Update(gameTime);
@@ -374,7 +407,7 @@ namespace TGC.MonoGame.TP
     GraphicsDevice.DepthStencilState = DepthStencilState.None;
     GraphicsDevice.BlendState = BlendState.Opaque;
 
-    // Dibujo del cielo (tu fullscreen quad)
+    // Dibujo del cielo (fullscreen quad)
     skyEffect.CurrentTechnique.Passes[0].Apply();
     GraphicsDevice.SetVertexBuffer(fullscreenQuad);
     GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
@@ -386,7 +419,6 @@ namespace TGC.MonoGame.TP
         _effect3.Parameters["View"].SetValue(MenuView);
         drawTerrainWithView(MenuView);
 
-        //menuTank.Draw(GraphicsDevice, MenuView, Projection);
         foreach (var tree in trees)
             tree.Draw(GraphicsDevice, MenuView, Projection);
 
@@ -423,10 +455,11 @@ namespace TGC.MonoGame.TP
         }
 
         // --------------------------
-        // HUD: Barra de vida, muertes, tiempo
+        // HUD + Barras de vida enemigos
         // --------------------------
         spriteBatch.Begin();
 
+        // Vida del jugador
         int barWidth = 200;
         int barHeight = 20;
         float healthPercent = (float)tanque.CurrentHealth / tanque.MaxHealth;
@@ -437,14 +470,27 @@ namespace TGC.MonoGame.TP
         spriteBatch.Draw(pixel, backgroundBar, Color.DarkRed);
         spriteBatch.Draw(pixel, healthBar, Color.Red);
 
-        string healthText = $"Vida: {tanque.CurrentHealth} / {tanque.MaxHealth}";
-        spriteBatch.DrawString(menuFont, healthText, new Vector2(20, 45), Color.White);
+        spriteBatch.DrawString(menuFont, $"Vida: {tanque.CurrentHealth} / {tanque.MaxHealth}", new Vector2(20, 45), Color.White);
+        spriteBatch.DrawString(menuFont, $"Muertes: {kills}", new Vector2(20, 70), Color.White);
+        spriteBatch.DrawString(menuFont, $"Tiempo: {gameTimeElapsed.Minutes:D2}:{gameTimeElapsed.Seconds:D2}", new Vector2(20, 95), Color.White);
 
-        string killsText = $"Muertes: {kills}";
-        spriteBatch.DrawString(menuFont, killsText, new Vector2(20, 70), Color.White);
+        // Barras de vida sobre enemigos
+        foreach (var enemy in enemies)
+        {
+            if (enemy.IsDead) continue;
 
-        string timeText = $"Tiempo: {gameTimeElapsed.Minutes:D2}:{gameTimeElapsed.Seconds:D2}";
-        spriteBatch.DrawString(menuFont, timeText, new Vector2(20, 95), Color.White);
+            // Posición 3D sobre el tanque
+            Vector3 worldPos = enemy._position + new Vector3(0, 20, 0);
+            Vector3 screenPos = GraphicsDevice.Viewport.Project(worldPos, Projection, View, Matrix.Identity);
+
+            float enemyHealthPercent = (float)enemy.CurrentHealth / enemy.MaxHealth;
+            int enemyBarWidth = 50;
+            int enemyBarHeight = 6;
+            Vector2 enemyBarPos = new Vector2(screenPos.X - enemyBarWidth / 2, screenPos.Y - enemyBarHeight);
+
+            spriteBatch.Draw(pixel, new Rectangle((int)enemyBarPos.X, (int)enemyBarPos.Y, enemyBarWidth, enemyBarHeight), Color.DarkRed);
+            spriteBatch.Draw(pixel, new Rectangle((int)enemyBarPos.X, (int)enemyBarPos.Y, (int)(enemyBarWidth * enemyHealthPercent), enemyBarHeight), Color.LimeGreen);
+        }
 
         spriteBatch.End();
     }
@@ -463,9 +509,22 @@ namespace TGC.MonoGame.TP
         }
         spriteBatch.End();
     }
+    else if (CurrentState == GameState.GameOver)
+    {
+        drawTerrain();
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        foreach (var tree in trees)
+            tree.Draw(GraphicsDevice, View, Projection);
+
+        spriteBatch.Begin();
+        spriteBatch.DrawString(menuFont, "Has sido destruido", new Vector2(100, 100), Color.Red);
+        spriteBatch.DrawString(menuFont, "Presiona R para reiniciar", new Vector2(100, 150), Color.White);
+        spriteBatch.End();
+    }
 
     base.Draw(gameTime);
 }
+
 
 
 
@@ -532,41 +591,88 @@ namespace TGC.MonoGame.TP
             }
         }
         public float GetTerrainHeight(float worldX, float worldZ)
-{
-    // Primero convertimos la posición world a índice del heightmap
-    // (Tienes que adaptar estos valores según la escala y offset de tu terreno)
-    float terrainScale = 10f;     // el scale usado en createHeightMap y el drawTerrain
-    float offset = 200f;          // el offset negativo usado en drawTerrain para mover el terreno
+        {
+            // Primero convertimos la posición world a índice del heightmap
+            // (Tienes que adaptar estos valores según la escala y offset de tu terreno)
+            float terrainScale = 10f;     // el scale usado en createHeightMap y el drawTerrain
+            float offset = 200f;          // el offset negativo usado en drawTerrain para mover el terreno
 
-    // Posición local en el heightmap
-    float localX = (worldX + offset) / terrainScale;
-    float localZ = (worldZ + offset) / terrainScale;
+            // Posición local en el heightmap
+            float localX = (worldX + offset) / terrainScale;
+            float localZ = (worldZ + offset) / terrainScale;
 
-    int x0 = (int)Math.Floor(localX);
-    int z0 = (int)Math.Floor(localZ);
-    int x1 = x0 + 1;
-    int z1 = z0 + 1;
+            int x0 = (int)Math.Floor(localX);
+            int z0 = (int)Math.Floor(localZ);
+            int x1 = x0 + 1;
+            int z1 = z0 + 1;
 
-    // Validar límites para no salir del arreglo
-    if (x0 < 0 || z0 < 0 || x1 >= heightMapVertices.GetLength(0) || z1 >= heightMapVertices.GetLength(1))
-        return 0f; // fuera del terreno
+            // Validar límites para no salir del arreglo
+            if (x0 < 0 || z0 < 0 || x1 >= heightMapVertices.GetLength(0) || z1 >= heightMapVertices.GetLength(1))
+                return 0f; // fuera del terreno
 
-    // Fracciones para interpolar
-    float fracX = localX - x0;
-    float fracZ = localZ - z0;
+            // Fracciones para interpolar
+            float fracX = localX - x0;
+            float fracZ = localZ - z0;
 
-    // Obtener alturas de los 4 vértices cercanos
-    float h00 = heightMapVertices[x0, z0].Y;
-    float h10 = heightMapVertices[x1, z0].Y;
-    float h01 = heightMapVertices[x0, z1].Y;
-    float h11 = heightMapVertices[x1, z1].Y;
+            // Obtener alturas de los 4 vértices cercanos
+            float h00 = heightMapVertices[x0, z0].Y;
+            float h10 = heightMapVertices[x1, z0].Y;
+            float h01 = heightMapVertices[x0, z1].Y;
+            float h11 = heightMapVertices[x1, z1].Y;
 
-    // Interpolación bilineal
-    float h0 = MathHelper.Lerp(h00, h10, fracX);
-    float h1 = MathHelper.Lerp(h01, h11, fracX);
-    float height = MathHelper.Lerp(h0, h1, fracZ);
+            // Interpolación bilineal
+            float h0 = MathHelper.Lerp(h00, h10, fracX);
+            float h1 = MathHelper.Lerp(h01, h11, fracX);
+            float height = MathHelper.Lerp(h0, h1, fracZ);
 
-    return height;
-}
+            return height;
+        }
+
+        private void RestartGame()
+        {
+            // Reiniciar jugador
+            tanque = new Tank(Content, GraphicsDevice);
+
+            // Reiniciar enemigos
+            enemies.Clear();
+            for (int i = 0; i < 10; i++)
+            {
+                var x = r.Next(-400, 400);
+                var z = r.Next(-400, 400);
+                var pos = new Vector3(x, 0, z);
+                enemies.Add(new EnemyTank(Content, GraphicsDevice) { _position = pos });
+            }
+
+            // Reiniciar árboles, rocas, kills, tiempo, etc.
+            gameTimeElapsed = TimeSpan.Zero;
+            kills = 0;
+            trees.Clear();
+            GenerateProps(); // asumiendo que tenés un método que los genera
+            CurrentState = GameState.Playing;
+        }
+
+        private void GenerateProps()
+        {
+            var r = new Random();
+            trees = new List<Prop>();
+
+            List<Vector3> treeColors = new() { new Vector3(0.943f, 0.588f, 0.325f), new Vector3(0.1f, 0.7f, 0.1f) };
+
+            for (int i = 0; i < 250; i++)
+            {
+                var x = r.NextSingle() * 200 * ((i % 2 == 1) ? -1 : 1);
+                var y = r.NextSingle() * 200 * ((i % 3 == 0) ? -1 : 1);
+                var scale = r.NextSingle() + 1f;
+                var alt = (x > -200 && y > -200 && x < 1080 && y < 1080) ? heightMapVertices[(int)x / 10 + 20, (int)y / 10 + 20].Y - 20 : 0f;
+                var boxMin = new Vector3(x - scale, alt + 2, y - scale);
+                var boxMax = new Vector3(x + scale, alt + 7 * scale, y + scale);
+
+                if (i < 50)
+                    trees.Add(new Rock(rock, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), new Vector3(0.7f), scale));
+                else
+                    trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), treeColors, scale));
+            }
+        }
     }
+    
 }

@@ -18,7 +18,7 @@ public class EnemyTank
     private Model ShellModel;
     private Effect ShellEffect;
 
-    private float reloadTime = 3.0f;
+    private float reloadTime = 10.0f;
     private float reloadTimer = 0f;
 
     public List<Shell> shells = new List<Shell>();
@@ -44,38 +44,79 @@ public class EnemyTank
         ShellEffect = content.Load<Effect>("Effects/ShaderShell");
     }
 
-    public void Update(GameTime gameTime, TerrainHeightFunction getHeight, Vector3 playerPosition)
+   public void Update(GameTime gameTime, TerrainHeightFunction getHeight, Vector3 playerPosition, List<Shell> playerShells, List<EnemyTank> allEnemies)
+{
+    if (IsDead) return;
+
+    float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+    // Dirección hacia jugador (XZ)
+    Vector3 direction = playerPosition - _position;
+    direction.Y = 0;
+    if (direction.LengthSquared() > 0.001f)
+        direction.Normalize();
+
+    // --- Fuerza de separación con otros enemigos ---
+    Vector3 separation = Vector3.Zero;
+    float separationRadius = 15f;
+    foreach (var other in allEnemies)
     {
-        if (IsDead) return;
+        if (other == this || other.IsDead) continue;
 
-        float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        Vector3 toOther = _position - other._position;
+        float distance = toOther.Length();
 
-        // Mover hacia jugador (XZ)
-        Vector3 direction = playerPosition - _position;
-        direction.Y = 0;
-        if (direction.LengthSquared() > 0.1f)
+        if (distance < separationRadius && distance > 0.01f)
         {
-            direction.Normalize();
-            float speed = 1.5f;
-            _position += direction * speed * elapsed;
-            _rotation = direction;
+            toOther.Normalize();
+            float strength = (separationRadius - distance) / separationRadius;
+            separation += toOther * strength;
         }
+    }
 
-        // Ajustar altura al terreno
-        _position.Y = getHeight(_position.X, _position.Z) - 18f;
+    // Dirección final combinada
+    Vector3 finalDirection = direction + separation;
+    if (finalDirection.LengthSquared() > 0.001f)
+    {
+        finalDirection.Normalize();
+        float speed = 1.5f;
+        _position += finalDirection * speed * elapsed;
+        _rotation = finalDirection;
+    }
 
-        // Disparo con cooldown
-        reloadTimer -= elapsed;
-        if (reloadTimer <= 0f)
+    // Ajustar altura al terreno
+    _position.Y = getHeight(_position.X, _position.Z) - 18f;
+
+    // Colisiones con balas del jugador
+    foreach (var shell in playerShells)
+    {
+        if (this.GetBoundingBox().Intersects(shell.BoundingBox))
         {
-            TryShoot(playerPosition);
-            reloadTimer = reloadTime;
+            TakeDamage(10); // Daño arbitrario
+            shell.isExpired = true;
         }
+    }
 
-        // Actualizar balas
-        foreach (var shell in shells)
-            shell.Update(gameTime);
-        shells.RemoveAll(s => s.isExpired);
+    // Disparo con cooldown
+    reloadTimer -= elapsed;
+    if (reloadTimer <= 0f)
+    {
+        TryShoot(playerPosition);
+        reloadTimer = reloadTime;
+    }
+
+    // Actualizar balas propias
+    foreach (var shell in shells)
+        shell.Update(gameTime);
+    shells.RemoveAll(s => s.isExpired);
+}
+
+
+    // Método para obtener BoundingBox del tanque
+    public BoundingBox GetBoundingBox()
+    {
+        float size = 2f; // Ajusta según tu modelo
+        return new BoundingBox(_position - new Vector3(size, size, size), _position + new Vector3(size, size, size));
     }
 
     private void TryShoot(Vector3 playerPosition)
@@ -97,42 +138,58 @@ public class EnemyTank
         if (CurrentHealth < 0) CurrentHealth = 0;
     }
 
-   public void Draw(GraphicsDevice graphicsDevice, Matrix view, Matrix projection, Vector3 cameraPosition)
-{
-    if (IsDead) return;
-
-    Matrix world = Matrix.CreateScale(1.5f) // opcional si necesitás escalar
-             * Matrix.CreateRotationX(-MathHelper.PiOver2) // 🔁 gira 90° hacia adelante (desde “mirando al piso”)
-             * Matrix.CreateRotationY((float)Math.Atan2(_rotation.X, _rotation.Z))
-             * Matrix.CreateTranslation(_position);
-
-    foreach (var mesh in Model.Meshes)
+    public void Draw(GraphicsDevice graphicsDevice, Matrix view, Matrix projection, Vector3 cameraPosition)
     {
-        foreach (Effect effect in mesh.Effects) // Cambiado BasicEffect por Effect
+        if (IsDead) return;
+
+        Matrix world = Matrix.CreateScale(1.5f) // opcional si necesitás escalar
+                 * Matrix.CreateRotationX(-MathHelper.PiOver2) // 🔁 gira 90° hacia adelante (desde “mirando al piso”)
+                 * Matrix.CreateRotationY((float)Math.Atan2(_rotation.X, _rotation.Z))
+                 * Matrix.CreateTranslation(_position);
+
+        foreach (var mesh in Model.Meshes)
         {
-            effect.Parameters["World"].SetValue(world);
-            effect.Parameters["View"].SetValue(view);
-            effect.Parameters["Projection"].SetValue(projection);
-
-            // Si tu shader tiene iluminación y otros parámetros:
-            effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
-            effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1, 1, 1));
-            effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));
-            effect.Parameters["shininess"]?.SetValue(32f);
-            effect.Parameters["KAmbient"]?.SetValue(0.5f);
-
-            // Aplicar la técnica y pase del shader
-            foreach (var pass in effect.CurrentTechnique.Passes)
+            foreach (Effect effect in mesh.Effects) // Cambiado BasicEffect por Effect
             {
-                pass.Apply();
+                effect.Parameters["World"].SetValue(world);
+                effect.Parameters["View"].SetValue(view);
+                effect.Parameters["Projection"].SetValue(projection);
+
+                // Si tu shader tiene iluminación y otros parámetros:
+                effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+                effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
+                effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
+                effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1, 1, 1));
+                effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));
+                effect.Parameters["shininess"]?.SetValue(32f);
+                effect.Parameters["KAmbient"]?.SetValue(0.5f);
+
+                // Aplicar la técnica y pase del shader
+                foreach (var pass in effect.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                }
             }
+            mesh.Draw();
         }
-        mesh.Draw();
+
+        foreach (var shell in shells)
+            shell.Draw(view, projection);
     }
 
-    foreach (var shell in shells)
-        shell.Draw(view, projection);
-}
+    public BoundingBox BoundingBox
+    {
+        get
+        {
+            // Ajusta estos valores según el tamaño de tu modelo/enemigo
+            float width = 1f;
+            float height = 1.5f;
+            float depth = 1f;
+
+            return new BoundingBox(
+                _position - new Vector3(width, 0.5f, depth),
+                _position + new Vector3(width, height, depth)
+            );
+        }
+    }
 }

@@ -87,6 +87,7 @@ public bool IsDead => CurrentHealth <= 0;
 
     public Tank(ContentManager content, GraphicsDevice graphicsDevice)
     {
+        CurrentHealth = MaxHealth;
         this.graphicsDevice = graphicsDevice;
         this.content = content;
 
@@ -375,7 +376,17 @@ public bool IsDead => CurrentHealth <= 0;
     }
 
     
-    
+    public void CheckCollisionsWithEnemyShells(List<Shell> enemyShells)
+    {
+        foreach (var shell in enemyShells)
+        {
+            if (this.BoundingBox.Intersects(shell.BoundingBox))
+            {
+                TakeDamage(10);
+                shell.isExpired = true;
+            }
+        }
+    }
     
     
     
