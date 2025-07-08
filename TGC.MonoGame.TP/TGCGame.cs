@@ -67,7 +67,7 @@ namespace TGC.MonoGame.TP
         Vector3 cameraPosition = new Vector3(15, 5, 0);
         private VertexBuffer fullscreenQuad;
         private Effect skyEffect;
-        
+        private DebugDraw debugDraw;
 
         protected override void Initialize()
         {
@@ -115,6 +115,7 @@ namespace TGC.MonoGame.TP
             Texture23 = Content.Load<Texture2D>(ContentFolderTextures + "pasto");
             Texture2 = Content.Load<Texture2D>(ContentFolderTextures + "tierra");
             skyEffect = Content.Load<Effect>(ContentFolderEffects + "SkyGradientEffect");
+            debugDraw = new DebugDraw(GraphicsDevice);
 
             //------------------------------------------------------------------------------------------------------
             //para el cielo
@@ -240,13 +241,18 @@ namespace TGC.MonoGame.TP
                 trees.RemoveAll(t => t.isExpired);
                 //tanque.Update(gameTime);
                 tanque.Update(gameTime, GetTerrainHeight);
-                foreach (var meshBox in tanque.MeshBoundingBoxes)
-                    foreach (var tree in trees)
-                        if (meshBox.Intersects(tree.hitBox))
+                foreach (var obb in tanque.MeshOBBs)
+                    {
+                        foreach (var tree in trees)
                         {
-                            tanque.RevertPosition();
-                            break;
+                            if (CollisionHelper.OBBvsAABB(obb, tree.hitBox))
+                            {
+                                tanque.RevertPosition();
+                                break;
+                            }
                         }
+                    }
+
 
                 foreach (var tree in trees)
                     foreach (var shell in tanque.shells)
@@ -338,11 +344,14 @@ namespace TGC.MonoGame.TP
                     tree.Draw(GraphicsDevice, View, Projection);
                     DrawHitBox(tree.hitBox);
                 }
-
-                foreach (var box in tanque.MeshBoundingBoxes)
+                foreach (var obb in tanque.MeshOBBs)
+                {
+                    debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
+                }
+/*                 foreach (var box in tanque.MeshBoundingBoxes)
                 {
                     DrawHitBox(box);
-                }
+                } */
             }
             else if (CurrentState == GameState.Paused)
             {
