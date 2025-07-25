@@ -271,6 +271,14 @@ public bool IsDead => CurrentHealth <= 0;
         int indiceCannon = Model.Bones["Cannon"].Index;
         _boneTransforms[indiceCannon] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[indiceCannon];
 
+        var worldInverseTranspose = Matrix.Transpose(Matrix.Invert(World));
+        var worldIT3x3 = new Matrix(
+            worldInverseTranspose.M11, worldInverseTranspose.M12, worldInverseTranspose.M13, 0,
+            worldInverseTranspose.M21, worldInverseTranspose.M22, worldInverseTranspose.M23, 0,
+            worldInverseTranspose.M31, worldInverseTranspose.M32, worldInverseTranspose.M33, 0,
+            0, 0, 0, 1
+        );
+
         foreach (var mesh in Model.Meshes)
         {
             foreach (var effect in mesh.Effects)
@@ -285,8 +293,18 @@ public bool IsDead => CurrentHealth <= 0;
                 effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));
                 effect.Parameters["shininess"]?.SetValue(32f);
 
+               effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
                 effect.Parameters["KAmbient"].SetValue(0.5f);
-                //effect.EnableDefaultLighting();
+                effect.Parameters["diffuseColor"].SetValue(new Vector3(1, 1, 1));
+                effect.Parameters["specularColor"].SetValue(new Vector3(1, 1, 1));
+                effect.Parameters["shininess"].SetValue(32f);
+
+                effect.Parameters["WorldInverseTranspose"].SetValue(new Matrix(
+                    worldInverseTranspose.M11, worldInverseTranspose.M12, worldInverseTranspose.M13, 0,
+                    worldInverseTranspose.M21, worldInverseTranspose.M22, worldInverseTranspose.M23, 0,
+                    worldInverseTranspose.M31, worldInverseTranspose.M32, worldInverseTranspose.M33, 0,
+                    0, 0, 0, 1
+                ));
             }
 
             foreach (var meshPart in mesh.MeshParts)

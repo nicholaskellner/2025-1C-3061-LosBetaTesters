@@ -11,6 +11,7 @@
 uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
+uniform float3x3 WorldInverseTranspose;
 
 uniform float3 lightPosition;
 uniform float3 cameraPosition;
@@ -52,11 +53,12 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
     float4 worldPos = mul(input.Position, World);
     output.Position = mul(mul(worldPos, View), Projection);
-
-    output.Normal = normalize(mul(float4(input.Normal, 0.0), World).xyz);
     output.WorldPos = worldPos.xyz;
-    output.TexCoord = input.TexCoord;
 
+    
+    output.Normal = normalize(mul(input.Normal, WorldInverseTranspose));
+
+    output.TexCoord = input.TexCoord;
     return output;
 }
 
@@ -67,13 +69,15 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     float3 viewDir = normalize(cameraPosition - input.WorldPos);
     float3 halfVec = normalize(lightDir + viewDir);
 
-    float diff = max(dot(normal, lightDir), 0);
-    float spec = pow(max(dot(normal, halfVec), 0), shininess);
+    float distance = length(lightPosition - input.WorldPos);
+    float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.01 * distance * distance); // opcional
+
+    float diff = max(dot(normal, lightDir), 0.0);
+    float spec = pow(max(dot(normal, halfVec), 0.0), shininess);
 
     float3 lighting =
         ambientColor * KAmbient +
-        diffuseColor * diff +
-        specularColor * spec;
+        (diffuseColor * diff + specularColor * spec) * attenuation;
 
     float4 texColor = tex2D(TextureSampler, input.TexCoord);
     return float4(texColor.rgb * lighting, texColor.a);
@@ -87,5 +91,6 @@ technique BasicColorDrawing
         PixelShader = compile PS_SHADERMODEL MainPS();
     }
 };
+
 
 

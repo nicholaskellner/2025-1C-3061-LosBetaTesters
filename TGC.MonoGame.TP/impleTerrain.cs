@@ -65,6 +65,7 @@ namespace ThunderingTanks
             Effect.Parameters["lightColor"].SetValue(lightColor);
 
             Effect.Parameters["cameraPosition"].SetValue(cameraPosition);
+            Effect.Parameters["Tiling"]?.SetValue(new Vector2(10f, 10f));
 
             graphicsDevice.SetVertexBuffer(vbTerrain);
 

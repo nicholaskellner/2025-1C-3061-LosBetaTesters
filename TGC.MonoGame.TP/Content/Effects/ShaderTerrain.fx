@@ -7,6 +7,7 @@
     #define PS_SHADERMODEL ps_4_0
 #endif
 
+uniform float2 Tiling;
 uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
@@ -66,7 +67,7 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     float4 viewPosition = mul(worldPosition, View);
     output.Position = mul(viewPosition, Projection);
 
-    output.TextureCoordinate = input.TextureCoordinate;
+    output.TextureCoordinate = input.TextureCoordinate * Tiling;
 
     return output;
 }
