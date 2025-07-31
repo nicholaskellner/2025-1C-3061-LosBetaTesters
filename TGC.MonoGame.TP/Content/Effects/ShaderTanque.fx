@@ -85,6 +85,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 
     float3 finalColor = ambient + diffuse + specular;
 
+    //return float4(normal * 0.5 + 0.5, 1.0); //uso esto para comprobar la intensidad de la luz en distintas zonas del mapa ya que no se aprecia bien por la textura
     return float4(finalColor, texColor.a);
 }
 
