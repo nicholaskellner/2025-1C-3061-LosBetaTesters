@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using ThunderingTanks.Objects;
 
 namespace TGC.MonoGame.TP
 {
@@ -77,7 +79,8 @@ namespace TGC.MonoGame.TP
         const int ENEMY_COUNT = 10;
         Random r = new Random();
         private Texture2D whitePixel;
-        Vector3 lightPosition = new Vector3(50f, 30f, 30f); 
+        Vector3 lightPosition = new Vector3(50f, 30f, 30f);
+        private Skybox skybox;
         
 
 
@@ -117,6 +120,8 @@ namespace TGC.MonoGame.TP
             pixel = new Texture2D(GraphicsDevice, 1, 1);
             pixel.SetData(new[] { Color.White });
             menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
+            skybox = new Skybox(100f); // Escala grande para que no se note el cubo
+            skybox.LoadContent(Content);
 
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Volume = 0.5f; // entre 0 y 1
@@ -137,21 +142,6 @@ namespace TGC.MonoGame.TP
             whitePixel = new Texture2D(GraphicsDevice, 1, 1);
             whitePixel.SetData(new[] { Color.White });
 
-
-            //------------------------------------------------------------------------------------------------------
-            // para el cielo
-            VertexPositionTexture[] vertices = new VertexPositionTexture[6];
-
-            vertices[0] = new VertexPositionTexture(new Vector3(-1, 1, 0), new Vector2(0, 0));
-            vertices[1] = new VertexPositionTexture(new Vector3(1, 1, 0), new Vector2(1, 0));
-            vertices[2] = new VertexPositionTexture(new Vector3(-1, -1, 0), new Vector2(0, 1));
-            vertices[3] = new VertexPositionTexture(new Vector3(-1, -1, 0), new Vector2(0, 1));
-            vertices[4] = new VertexPositionTexture(new Vector3(1, 1, 0), new Vector2(1, 0));
-            vertices[5] = new VertexPositionTexture(new Vector3(1, -1, 0), new Vector2(1, 1));
-
-            fullscreenQuad = new VertexBuffer(GraphicsDevice, typeof(VertexPositionTexture), 6, BufferUsage.WriteOnly);
-            fullscreenQuad.SetData(vertices);
-            //------------------------------------------------------------------------------------------------------
 
             Texture2D heightMapTexture = Content.Load<Texture2D>(ContentFolder3D + "heightmap");
             createHeightMap(heightMapTexture);
@@ -404,16 +394,15 @@ namespace TGC.MonoGame.TP
 
         protected override void Draw(GameTime gameTime)
 {
-    GraphicsDevice.Clear(Color.Black);
-    GraphicsDevice.DepthStencilState = DepthStencilState.None;
-    GraphicsDevice.BlendState = BlendState.Opaque;
+   GraphicsDevice.Clear(Color.Black);
 
-    // Dibujo del cielo (fullscreen quad)
-    skyEffect.CurrentTechnique.Passes[0].Apply();
-    GraphicsDevice.SetVertexBuffer(fullscreenQuad);
-    GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
+    GraphicsDevice.DepthStencilState = DepthStencilState.None;
+    GraphicsDevice.RasterizerState = RasterizerState.CullNone;
+
+    skybox.Draw(View, Projection, cameraPosition);
 
     GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+    GraphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
 
     if (CurrentState == GameState.Menu)
     {
