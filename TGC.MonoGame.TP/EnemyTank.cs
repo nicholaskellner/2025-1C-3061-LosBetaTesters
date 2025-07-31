@@ -139,43 +139,64 @@ public class EnemyTank
     }
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix view, Matrix projection, Vector3 cameraPosition)
-    {
-        if (IsDead) return;
+{
+    if (IsDead) return;
 
-        Matrix world = Matrix.CreateScale(1.5f) // opcional si necesitás escalar
-                 * Matrix.CreateRotationX(-MathHelper.PiOver2) // 🔁 gira 90° hacia adelante (desde “mirando al piso”)
+    Matrix world = Matrix.CreateScale(1.5f)
+                 * Matrix.CreateRotationX(-MathHelper.PiOver2)
                  * Matrix.CreateRotationY((float)Math.Atan2(_rotation.X, _rotation.Z))
                  * Matrix.CreateTranslation(_position);
 
-        foreach (var mesh in Model.Meshes)
+    Matrix worldInvTrans = Matrix.Transpose(Matrix.Invert(world));
+
+    foreach (var mesh in Model.Meshes)
+    {
+        foreach (var meshPart in mesh.MeshParts)
         {
-            foreach (Effect effect in mesh.Effects) // Cambiado BasicEffect por Effect
+            // ⚠️ Usar TU shader
+            var effect = Effect.Clone();
+            meshPart.Effect = effect;
+
+            // Establecer técnica (por si acaso)
+            effect.CurrentTechnique = effect.Techniques[0];
+
+            // Setear parámetros
+            effect.Parameters["World"]?.SetValue(world);
+            effect.Parameters["View"]?.SetValue(view);
+            effect.Parameters["Projection"]?.SetValue(projection);
+            effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInvTrans);
+
+            effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
+            effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
+            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["specularColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["shininess"]?.SetValue(32f);
+            effect.Parameters["KAmbient"]?.SetValue(0.5f);
+            effect.Parameters["Texture"]?.SetValue(Texture);
+
+            // Dibujar meshPart manualmente
+            graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+            graphicsDevice.Indices = meshPart.IndexBuffer;
+
+            foreach (var pass in effect.CurrentTechnique.Passes)
             {
-                effect.Parameters["World"].SetValue(world);
-                effect.Parameters["View"].SetValue(view);
-                effect.Parameters["Projection"].SetValue(projection);
-
-                // Si tu shader tiene iluminación y otros parámetros:
-                effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-                effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
-                effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-                effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["shininess"]?.SetValue(32f);
-                effect.Parameters["KAmbient"]?.SetValue(0.5f);
-
-                // Aplicar la técnica y pase del shader
-                foreach (var pass in effect.CurrentTechnique.Passes)
-                {
-                    pass.Apply();
-                }
+                pass.Apply();
+                graphicsDevice.DrawIndexedPrimitives(
+                    PrimitiveType.TriangleList,
+                    meshPart.VertexOffset,
+                    meshPart.StartIndex,
+                    meshPart.PrimitiveCount
+                );
             }
-            mesh.Draw();
         }
-
-        foreach (var shell in shells)
-            shell.Draw(view, projection);
     }
+
+    // Dibujar shells
+    foreach (var shell in shells)
+        shell.Draw(view, projection);
+}
+
 
     public BoundingBox BoundingBox
     {

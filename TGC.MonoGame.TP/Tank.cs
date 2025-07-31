@@ -256,82 +256,91 @@ public bool IsDead => CurrentHealth <= 0;
     }
 
 
-    public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 cameraPosition)
+  public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 cameraPosition)
+{
+    graphicsDevice.BlendState = BlendState.Opaque;
+    graphicsDevice.DepthStencilState = DepthStencilState.Default;
+
+    // Animaciones de ruedas
+    var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
+    var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
+    for (var i = 0; i < 8; i++)
     {
-        var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
-        var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
-        for (var i = 0; i < 8; i++)
-        {
-            leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
-            rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
-        }
-        Model.CopyAbsoluteBoneTransformsTo(_boneTransforms);
-        int indiceHueso = Model.Bones["Turret"].Index;
-        _boneTransforms[indiceHueso] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[indiceHueso];
-        int indiceCannon = Model.Bones["Cannon"].Index;
-        _boneTransforms[indiceCannon] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) * Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[indiceCannon];
-
-        var worldInverseTranspose = Matrix.Transpose(Matrix.Invert(World));
-        var worldIT3x3 = new Matrix(
-            worldInverseTranspose.M11, worldInverseTranspose.M12, worldInverseTranspose.M13, 0,
-            worldInverseTranspose.M21, worldInverseTranspose.M22, worldInverseTranspose.M23, 0,
-            worldInverseTranspose.M31, worldInverseTranspose.M32, worldInverseTranspose.M33, 0,
-            0, 0, 0, 1
-        );
-
-        foreach (var mesh in Model.Meshes)
-        {
-            foreach (var effect in mesh.Effects)
-            {
-                effect.Parameters["World"].SetValue(_boneTransforms[mesh.ParentBone.Index] * World);
-                effect.Parameters["View"].SetValue(View);
-                effect.Parameters["Projection"].SetValue(Projection);
-                effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-                effect.Parameters["lightPosition"]?.SetValue(new Vector3(300, 400, 300)); // o donde quieras
-                effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-                effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["shininess"]?.SetValue(32f);
-
-               effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-                effect.Parameters["KAmbient"].SetValue(0.5f);
-                effect.Parameters["diffuseColor"].SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["specularColor"].SetValue(new Vector3(1, 1, 1));
-                effect.Parameters["shininess"].SetValue(32f);
-
-                effect.Parameters["WorldInverseTranspose"].SetValue(new Matrix(
-                    worldInverseTranspose.M11, worldInverseTranspose.M12, worldInverseTranspose.M13, 0,
-                    worldInverseTranspose.M21, worldInverseTranspose.M22, worldInverseTranspose.M23, 0,
-                    worldInverseTranspose.M31, worldInverseTranspose.M32, worldInverseTranspose.M33, 0,
-                    0, 0, 0, 1
-                ));
-            }
-
-            foreach (var meshPart in mesh.MeshParts)
-            {
-                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
-                graphicsDevice.Indices = meshPart.IndexBuffer;
-                if (Model.Meshes["Treadmill2"] == mesh || Model.Meshes["Treadmill1"] == mesh)
-                    meshPart.Effect.Parameters["Texture"].SetValue(TreadmillTexture);
-                else
-                    meshPart.Effect.Parameters["Texture"].SetValue(Texture);
-                foreach (var effectPass in meshPart.Effect.CurrentTechnique.Passes)
-                {
-                    effectPass.Apply();
-                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, meshPart.VertexOffset, meshPart.StartIndex, meshPart.PrimitiveCount);
-                }
-            }
-        }
-        if (shell != null)
-            shell.Draw(View, Projection);
-
-        foreach (var shell in shells)
-        {
-            shell.Draw(View, Projection);
-        }
-
-
+        leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
+        rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
     }
+
+    // Matrices de transformación del modelo
+    Model.CopyAbsoluteBoneTransformsTo(_boneTransforms);
+
+    // Rotaciones de torreta y cañón
+    int turretIndex = Model.Bones["Turret"].Index;
+    _boneTransforms[turretIndex] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[turretIndex];
+
+    int cannonIndex = Model.Bones["Cannon"].Index;
+    _boneTransforms[cannonIndex] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) *
+                                   Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[cannonIndex];
+
+    // Calcular WorldInverseTranspose (para iluminación)
+    //Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(World));
+
+    foreach (var mesh in Model.Meshes)
+    {
+        foreach (var meshPart in mesh.MeshParts)
+        {
+            var effect = Effect.Clone();
+            meshPart.Effect = effect;
+
+            effect.CurrentTechnique = effect.Techniques[0]; // Asegurarse de setear la técnica
+
+            var localWorld = _boneTransforms[mesh.ParentBone.Index] * World;
+            Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(localWorld));
+
+            // Seteamos parámetros del shader
+                effect.Parameters["World"]?.SetValue(localWorld);
+            effect.Parameters["View"]?.SetValue(View);
+            effect.Parameters["Projection"]?.SetValue(Projection);
+            effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInverseTranspose);
+
+            effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
+            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
+
+            effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["KAmbient"]?.SetValue(1f);
+            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["specularColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["shininess"]?.SetValue(32f);
+
+            // Textura según mesh
+            if (mesh.Name == "Treadmill2" || mesh.Name == "Treadmill1")
+                effect.Parameters["Texture"]?.SetValue(TreadmillTexture);
+            else
+                effect.Parameters["Texture"]?.SetValue(Texture);
+
+            // Dibujar el meshPart
+            graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+            graphicsDevice.Indices = meshPart.IndexBuffer;
+
+            foreach (var pass in effect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                graphicsDevice.DrawIndexedPrimitives(
+                    PrimitiveType.TriangleList,
+                    meshPart.VertexOffset,
+                    meshPart.StartIndex,
+                    meshPart.PrimitiveCount
+                );
+            }
+        }
+    }
+
+    // Dibujar proyectiles
+    shell?.Draw(View, Projection);
+    foreach (var s in shells)
+        s.Draw(View, Projection);
+}
+
+
     private void GenerateOriginalMeshBoundingBoxes()
     {
         foreach (var mesh in Model.Meshes)
