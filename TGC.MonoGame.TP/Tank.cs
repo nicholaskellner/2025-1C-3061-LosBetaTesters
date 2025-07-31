@@ -287,7 +287,7 @@ public bool IsDead => CurrentHealth <= 0;
                 effect.Parameters["View"].SetValue(View);
                 effect.Parameters["Projection"].SetValue(Projection);
                 effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-                effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30)); // o donde quieras
+                effect.Parameters["lightPosition"]?.SetValue(new Vector3(300, 400, 300)); // o donde quieras
                 effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
                 effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1, 1, 1));
                 effect.Parameters["specularColor"]?.SetValue(new Vector3(1, 1, 1));

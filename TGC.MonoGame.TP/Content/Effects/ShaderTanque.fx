@@ -11,7 +11,7 @@
 uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
-uniform float3x3 WorldInverseTranspose;
+uniform float4x4 WorldInverseTranspose;
 
 uniform float3 lightPosition;
 uniform float3 cameraPosition;

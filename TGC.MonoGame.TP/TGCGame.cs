@@ -77,6 +77,7 @@ namespace TGC.MonoGame.TP
         const int ENEMY_COUNT = 10;
         Random r = new Random();
         private Texture2D whitePixel;
+        Vector3 lightPosition = new Vector3(50f, 100f, 50f); 
         
 
 
@@ -420,7 +421,7 @@ namespace TGC.MonoGame.TP
         drawTerrainWithView(MenuView);
 
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, MenuView, Projection);
+            tree.Draw(GraphicsDevice, MenuView, Projection,lightPosition,cameraPosition);
 
         spriteBatch.Begin();
         for (int i = 0; i < menuOptions.Length; i++)
@@ -445,7 +446,7 @@ namespace TGC.MonoGame.TP
 
         foreach (var tree in trees)
         {
-            tree.Draw(GraphicsDevice, View, Projection);
+            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
             DrawHitBox(tree.hitBox);
         }
 
@@ -499,7 +500,7 @@ namespace TGC.MonoGame.TP
         drawTerrain();
         tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection);
+            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
 
         spriteBatch.Begin();
         for (int i = 0; i < pauseMenuOptions.Length; i++)
@@ -514,7 +515,7 @@ namespace TGC.MonoGame.TP
         drawTerrain();
         tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection);
+            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
 
         spriteBatch.Begin();
         spriteBatch.DrawString(menuFont, "Has sido destruido", new Vector2(100, 100), Color.Red);

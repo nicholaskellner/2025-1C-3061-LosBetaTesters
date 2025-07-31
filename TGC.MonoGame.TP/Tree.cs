@@ -45,31 +45,47 @@ public class Tree : Prop
         isExpired = true;
     }
 
-    public override void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection)
+   public override void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 lightPos, Vector3 cameraPos)
+{
+    foreach (var mesh in Model.Meshes)
     {
-        foreach (var mesh in Model.Meshes)
+        foreach (var effect in mesh.Effects)
         {
-            foreach (var effect in mesh.Effects)
-            {
-                effect.Parameters["World"].SetValue(world);
-                effect.Parameters["View"].SetValue(View);
-                effect.Parameters["Projection"].SetValue(Projection);
-                effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
-                effect.Parameters["KAmbient"].SetValue(0.5f);
-            }
+            effect.Parameters["World"].SetValue(world);
+            effect.Parameters["View"].SetValue(View);
+            effect.Parameters["Projection"].SetValue(Projection);
 
-            foreach (var part in mesh.MeshParts)
+            var worldInverseTranspose = Matrix.Transpose(Matrix.Invert(world));
+            effect.Parameters["WorldInverseTranspose"].SetValue(worldInverseTranspose);
+
+            effect.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["KAmbient"].SetValue(0.5f);
+
+            effect.Parameters["lightPosition"]?.SetValue(lightPos);
+            effect.Parameters["lightColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+            effect.Parameters["cameraPosition"]?.SetValue(cameraPos);
+            effect.Parameters["KDiffuse"]?.SetValue(0.7f);
+            effect.Parameters["KSpecular"]?.SetValue(0.5f);
+            effect.Parameters["shininess"]?.SetValue(32f);
+        }
+
+        foreach (var part in mesh.MeshParts)
+        {
+            graphicsDevice.SetVertexBuffer(part.VertexBuffer);
+            graphicsDevice.Indices = part.IndexBuffer;
+
+            int colorIndex = Math.Min(mesh.MeshParts.IndexOf(part), colors.Count - 1);
+            part.Effect.Parameters["color"].SetValue(new Vector4(colors[colorIndex], 1f));
+
+            foreach (var pass in part.Effect.CurrentTechnique.Passes)
             {
-                graphicsDevice.SetVertexBuffer(part.VertexBuffer);
-                graphicsDevice.Indices = part.IndexBuffer;
-                part.Effect.Parameters["color"].SetValue(new Vector4(colors[mesh.MeshParts.IndexOf(part)], 1));
-                foreach (var pass in part.Effect.CurrentTechnique.Passes)
-                {
-                    pass.Apply();
-                    graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, part.VertexOffset, part.StartIndex, part.PrimitiveCount);
-                }
+                pass.Apply();
+                graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList,
+                    part.VertexOffset, part.StartIndex, part.PrimitiveCount);
             }
         }
     }
+}
+
 
 }
