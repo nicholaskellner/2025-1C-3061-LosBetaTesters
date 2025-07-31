@@ -64,8 +64,8 @@ public class Tree : Prop
             effect.Parameters["lightPosition"]?.SetValue(lightPos);
             effect.Parameters["lightColor"]?.SetValue(new Vector3(1f, 1f, 1f));
             effect.Parameters["cameraPosition"]?.SetValue(cameraPos);
-            effect.Parameters["KDiffuse"]?.SetValue(0.7f);
-            effect.Parameters["KSpecular"]?.SetValue(0.5f);
+            effect.Parameters["KDiffuse"]?.SetValue(0.5f);
+            effect.Parameters["KSpecular"]?.SetValue(0.2f);
             effect.Parameters["shininess"]?.SetValue(32f);
         }
 

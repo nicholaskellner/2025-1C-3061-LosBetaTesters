@@ -59,13 +59,13 @@ namespace ThunderingTanks
             Effect.Parameters["Projection"].SetValue(projection);
 
             Effect.Parameters["ambientColor"].SetValue(new Vector3(0.3f, 0.3f, 0.3f)); 
-            Effect.Parameters["KAmbient"].SetValue(1.0f);
+            Effect.Parameters["KAmbient"].SetValue(0.5f);
 
             Effect.Parameters["lightDirection"].SetValue(Vector3.Normalize(lightDirection));
             Effect.Parameters["lightColor"].SetValue(lightColor);
 
             Effect.Parameters["cameraPosition"].SetValue(cameraPosition);
-            Effect.Parameters["Tiling"]?.SetValue(new Vector2(10f, 10f));
+            Effect.Parameters["Tiling"]?.SetValue(new Vector2(1f, 1f));
 
             graphicsDevice.SetVertexBuffer(vbTerrain);
 

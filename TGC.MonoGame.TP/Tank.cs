@@ -297,19 +297,19 @@ public bool IsDead => CurrentHealth <= 0;
             Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(localWorld));
 
             // Seteamos parámetros del shader
-                effect.Parameters["World"]?.SetValue(localWorld);
+            effect.Parameters["World"]?.SetValue(localWorld);
             effect.Parameters["View"]?.SetValue(View);
             effect.Parameters["Projection"]?.SetValue(Projection);
             effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInverseTranspose);
 
             effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
+            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 100, 30));
 
             effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["KAmbient"]?.SetValue(1f);
-            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["specularColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["shininess"]?.SetValue(32f);
+            effect.Parameters["KAmbient"]?.SetValue(0.7f);                  // menos luz ambiental
+            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
+            effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f)); // brillo azul/plateado metálico
+            effect.Parameters["shininess"]?.SetValue(80f); // brillo fuerte y concentrado
 
             // Textura según mesh
             if (mesh.Name == "Treadmill2" || mesh.Name == "Treadmill1")

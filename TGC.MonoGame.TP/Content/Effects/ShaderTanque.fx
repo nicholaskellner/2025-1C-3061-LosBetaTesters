@@ -55,7 +55,6 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     output.Position = mul(mul(worldPos, View), Projection);
     output.WorldPos = worldPos.xyz;
 
-    
     output.Normal = normalize(mul(input.Normal, WorldInverseTranspose));
 
     output.TexCoord = input.TexCoord;
@@ -70,17 +69,23 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     float3 halfVec = normalize(lightDir + viewDir);
 
     float distance = length(lightPosition - input.WorldPos);
-    float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.01 * distance * distance); // opcional
+    float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.01 * distance * distance);
 
     float diff = max(dot(normal, lightDir), 0.0);
     float spec = pow(max(dot(normal, halfVec), 0.0), shininess);
 
-    float3 lighting =
-        ambientColor * KAmbient +
-        (diffuseColor * diff + specularColor * spec) * attenuation;
-
     float4 texColor = tex2D(TextureSampler, input.TexCoord);
-    return float4(texColor.rgb * lighting, texColor.a);
+
+    // Luz ambiental y difusa multiplicadas por la textura (base)
+    float3 ambient = ambientColor * KAmbient * texColor.rgb;
+    float3 diffuse = diffuseColor * diff * texColor.rgb;
+
+    // Luz especular NO multiplicada por la textura para simular metal
+    float3 specular = specularColor * spec * attenuation;
+
+    float3 finalColor = ambient + diffuse + specular;
+
+    return float4(finalColor, texColor.a);
 }
 
 technique BasicColorDrawing
@@ -91,6 +96,7 @@ technique BasicColorDrawing
         PixelShader = compile PS_SHADERMODEL MainPS();
     }
 };
+
 
 
 

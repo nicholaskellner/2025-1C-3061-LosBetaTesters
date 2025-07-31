@@ -169,10 +169,10 @@ public class EnemyTank
             effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
             effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
             effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["specularColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["shininess"]?.SetValue(32f);
-            effect.Parameters["KAmbient"]?.SetValue(0.5f);
+            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
+            effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f));
+            effect.Parameters["shininess"]?.SetValue(80f);
+            effect.Parameters["KAmbient"]?.SetValue(0.7f);
             effect.Parameters["Texture"]?.SetValue(Texture);
 
             // Dibujar meshPart manualmente

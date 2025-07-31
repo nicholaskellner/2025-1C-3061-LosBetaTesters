@@ -77,7 +77,7 @@ namespace TGC.MonoGame.TP
         const int ENEMY_COUNT = 10;
         Random r = new Random();
         private Texture2D whitePixel;
-        Vector3 lightPosition = new Vector3(50f, 100f, 50f); 
+        Vector3 lightPosition = new Vector3(50f, 100f, 30f); 
         
 
 
