@@ -8,20 +8,22 @@
     #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
+// Matrices estándar
 uniform float4x4 World;
 uniform float4x4 View;
 uniform float4x4 Projection;
 uniform float3x3 WorldInverseTranspose;
 
+// Iluminación
 uniform float3 lightPosition;
 uniform float3 cameraPosition;
-
 uniform float3 ambientColor;
 uniform float KAmbient;
 uniform float3 diffuseColor;
 uniform float3 specularColor;
 uniform float shininess;
 
+// Textura base
 Texture2D Texture;
 
 sampler2D TextureSampler = sampler_state
@@ -32,6 +34,21 @@ sampler2D TextureSampler = sampler_state
     MagFilter = LINEAR;
 };
 
+// Shadow mapping
+uniform float4x4 LightViewProjection;
+Texture2D ShadowMap;
+
+sampler2D ShadowMapSampler = sampler_state
+{
+    Texture = <ShadowMap>;
+    MinFilter = POINT;
+    MagFilter = POINT;
+    MipFilter = NONE;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+};
+
+// Entrada del VS
 struct VertexShaderInput
 {
     float4 Position : POSITION0;
@@ -39,14 +56,17 @@ struct VertexShaderInput
     float2 TexCoord : TEXCOORD0;
 };
 
+// Salida del VS
 struct VertexShaderOutput
 {
     float4 Position : SV_POSITION;
-    float3 Normal : TEXCOORD0;
+    float3 Normal   : TEXCOORD0;
     float2 TexCoord : TEXCOORD1;
     float3 WorldPos : TEXCOORD2;
+    float4 ShadowCoord : TEXCOORD3;
 };
 
+// Vertex shader
 VertexShaderOutput MainVS(VertexShaderInput input)
 {
     VertexShaderOutput output;
@@ -54,13 +74,14 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     float4 worldPos = mul(input.Position, World);
     output.Position = mul(mul(worldPos, View), Projection);
     output.WorldPos = worldPos.xyz;
-
     output.Normal = normalize(mul(input.Normal, WorldInverseTranspose));
-
     output.TexCoord = input.TexCoord;
+
+    output.ShadowCoord = mul(worldPos, LightViewProjection);
     return output;
 }
 
+// Pixel shader con sombras
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
     float3 normal = normalize(input.Normal);
@@ -76,27 +97,32 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 
     float4 texColor = tex2D(TextureSampler, input.TexCoord);
 
-    // Luz ambiental y difusa multiplicadas por la textura (base)
     float3 ambient = ambientColor * KAmbient * texColor.rgb;
     float3 diffuse = diffuseColor * diff * texColor.rgb;
-
-    // Luz especular NO multiplicada por la textura para simular metal
     float3 specular = specularColor * spec * attenuation;
 
-    float3 finalColor = ambient + diffuse + specular;
+    // Shadow mapping
+    float2 shadowTexCoords = input.ShadowCoord.xy / input.ShadowCoord.w * 0.5 + 0.5;
+    float shadowDepth = tex2D(ShadowMapSampler, shadowTexCoords).r;
+    float currentDepth = input.ShadowCoord.z / input.ShadowCoord.w;
 
-    //return float4(normal * 0.5 + 0.5, 1.0); //uso esto para comprobar la intensidad de la luz en distintas zonas del mapa ya que no se aprecia bien por la textura
+    float bias = 0.005;
+    float shadow = currentDepth - bias > shadowDepth ? 0.4 : 1.0;
+
+    float3 finalColor = ambient + shadow * (diffuse + specular);
     return float4(finalColor, texColor.a);
 }
 
+// Técnica
 technique BasicColorDrawing
 {
     pass P0
     {
         VertexShader = compile VS_SHADERMODEL MainVS();
-        PixelShader = compile PS_SHADERMODEL MainPS();
+        PixelShader  = compile PS_SHADERMODEL MainPS();
     }
 };
+
 
 
 

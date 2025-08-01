@@ -43,6 +43,12 @@
 /processorParam:DebugMode=Auto
 /build:Effects/ShaderTree.fx
 
+#begin Effects/ShadowMap.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ShadowMap.fx
+
 #begin Effects/SkyboxShader.fx
 /importer:EffectImporter
 /processor:EffectProcessor

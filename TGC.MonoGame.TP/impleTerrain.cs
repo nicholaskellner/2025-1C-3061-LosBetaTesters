@@ -44,7 +44,7 @@ namespace ThunderingTanks
         /// <summary>
         ///     Renderiza el terreno
         /// </summary>
-        public void Draw(Matrix world, Matrix view, Matrix projection, Vector3 cameraPosition, Vector3 lightDirection, Vector3 lightColor)
+        public void Draw(Matrix world, Matrix view, Matrix projection, Vector3 cameraPosition, Vector3 lightDirection, Vector3 lightColor,Matrix lightViewProjectionMatrix, RenderTarget2D shadowMap)
         {
             var graphicsDevice = Effect.GraphicsDevice;
 
@@ -66,6 +66,8 @@ namespace ThunderingTanks
 
             Effect.Parameters["cameraPosition"].SetValue(cameraPosition);
             Effect.Parameters["Tiling"]?.SetValue(new Vector2(1f, 1f));
+            Effect.Parameters["LightViewProjection"].SetValue(lightViewProjectionMatrix);
+            Effect.Parameters["ShadowMap"].SetValue(shadowMap); // texture2D de la sombra
 
             graphicsDevice.SetVertexBuffer(vbTerrain);
 

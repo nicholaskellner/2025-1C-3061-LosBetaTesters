@@ -27,7 +27,7 @@ public class Tank
         if (CurrentHealth < 0) CurrentHealth = 0;
     }
 
-public bool IsDead => CurrentHealth <= 0;
+    public bool IsDead => CurrentHealth <= 0;
     private GraphicsDevice graphicsDevice;
     private ContentManager content;
     private float elapsedTime = 0;
@@ -256,89 +256,91 @@ public bool IsDead => CurrentHealth <= 0;
     }
 
 
-  public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 cameraPosition)
-{
-    graphicsDevice.BlendState = BlendState.Opaque;
-    graphicsDevice.DepthStencilState = DepthStencilState.Default;
-
-    // Animaciones de ruedas
-    var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
-    var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
-    for (var i = 0; i < 8; i++)
+    public void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 cameraPosition, Matrix lightViewProjectionMatrix, RenderTarget2D shadowMap)
     {
-        leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
-        rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
-    }
+        graphicsDevice.BlendState = BlendState.Opaque;
+        graphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-    // Matrices de transformación del modelo
-    Model.CopyAbsoluteBoneTransformsTo(_boneTransforms);
-
-    // Rotaciones de torreta y cañón
-    int turretIndex = Model.Bones["Turret"].Index;
-    _boneTransforms[turretIndex] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[turretIndex];
-
-    int cannonIndex = Model.Bones["Cannon"].Index;
-    _boneTransforms[cannonIndex] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) *
-                                   Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[cannonIndex];
-
-    // Calcular WorldInverseTranspose (para iluminación)
-    //Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(World));
-
-    foreach (var mesh in Model.Meshes)
-    {
-        foreach (var meshPart in mesh.MeshParts)
+        // Animaciones de ruedas
+        var leftWheelRotation = Matrix.CreateRotationX(wheelRotationRight);
+        var rightWheelRotation = Matrix.CreateRotationX(wheelRotationLeft);
+        for (var i = 0; i < 8; i++)
         {
-            var effect = Effect.Clone();
-            meshPart.Effect = effect;
+            leftWheels[i].Transform = leftWheelRotation * leftWheelsTransforms[i];
+            rightWheels[i].Transform = rightWheelRotation * rightWheelsTransforms[i];
+        }
 
-            effect.CurrentTechnique = effect.Techniques[0]; // Asegurarse de setear la técnica
+        // Matrices de transformación del modelo
+        Model.CopyAbsoluteBoneTransformsTo(_boneTransforms);
 
-            var localWorld = _boneTransforms[mesh.ParentBone.Index] * World;
-            Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(localWorld));
+        // Rotaciones de torreta y cañón
+        int turretIndex = Model.Bones["Turret"].Index;
+        _boneTransforms[turretIndex] = Matrix.CreateRotationZ(turret_yaw) * _boneTransforms[turretIndex];
 
-            // Seteamos parámetros del shader
-            effect.Parameters["World"]?.SetValue(localWorld);
-            effect.Parameters["View"]?.SetValue(View);
-            effect.Parameters["Projection"]?.SetValue(Projection);
-            effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInverseTranspose);
+        int cannonIndex = Model.Bones["Cannon"].Index;
+        _boneTransforms[cannonIndex] = Matrix.CreateRotationX(turret_pitch) * cannonRepo * Matrix.CreateRotationZ(turret_yaw) *
+                                       Matrix.CreateTranslation(-0.08f, 1.3f, -0.3f) * _boneTransforms[cannonIndex];
 
-            effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 100, 30));
+        // Calcular WorldInverseTranspose (para iluminación)
+        //Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(World));
 
-            effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["KAmbient"]?.SetValue(0.7f);                  // menos luz ambiental
-            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
-            effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f)); // brillo azul/plateado metálico
-            effect.Parameters["shininess"]?.SetValue(80f); // brillo fuerte y concentrado
-
-            // Textura según mesh
-            if (mesh.Name == "Treadmill2" || mesh.Name == "Treadmill1")
-                effect.Parameters["Texture"]?.SetValue(TreadmillTexture);
-            else
-                effect.Parameters["Texture"]?.SetValue(Texture);
-
-            // Dibujar el meshPart
-            graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
-            graphicsDevice.Indices = meshPart.IndexBuffer;
-
-            foreach (var pass in effect.CurrentTechnique.Passes)
+        foreach (var mesh in Model.Meshes)
+        {
+            foreach (var meshPart in mesh.MeshParts)
             {
-                pass.Apply();
-                graphicsDevice.DrawIndexedPrimitives(
-                    PrimitiveType.TriangleList,
-                    meshPart.VertexOffset,
-                    meshPart.StartIndex,
-                    meshPart.PrimitiveCount
-                );
+                var effect = Effect.Clone();
+                meshPart.Effect = effect;
+
+                effect.CurrentTechnique = effect.Techniques[0]; // Asegurarse de setear la técnica
+
+                var localWorld = _boneTransforms[mesh.ParentBone.Index] * World;
+                Matrix worldInverseTranspose = Matrix.Transpose(Matrix.Invert(localWorld));
+
+                // Seteamos parámetros del shader
+                effect.Parameters["World"]?.SetValue(localWorld);
+                effect.Parameters["View"]?.SetValue(View);
+                effect.Parameters["Projection"]?.SetValue(Projection);
+                effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInverseTranspose);
+
+                effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
+                effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 100, 30));
+
+                effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+                effect.Parameters["KAmbient"]?.SetValue(0.7f);                  // menos luz ambiental
+                effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
+                effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f)); // brillo azul/plateado metálico
+                effect.Parameters["shininess"]?.SetValue(80f); // brillo fuerte y concentrado
+                effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjectionMatrix);
+                effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
+
+                // Textura según mesh
+                if (mesh.Name == "Treadmill2" || mesh.Name == "Treadmill1")
+                    effect.Parameters["Texture"]?.SetValue(TreadmillTexture);
+                else
+                    effect.Parameters["Texture"]?.SetValue(Texture);
+
+                // Dibujar el meshPart
+                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+                graphicsDevice.Indices = meshPart.IndexBuffer;
+
+                foreach (var pass in effect.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                    graphicsDevice.DrawIndexedPrimitives(
+                        PrimitiveType.TriangleList,
+                        meshPart.VertexOffset,
+                        meshPart.StartIndex,
+                        meshPart.PrimitiveCount
+                    );
+                }
             }
         }
-    }
 
-    // Dibujar proyectiles
-    shell?.Draw(View, Projection);
-    foreach (var s in shells)
-        s.Draw(View, Projection);
-}
+        // Dibujar proyectiles
+        shell?.Draw(View, Projection);
+        foreach (var s in shells)
+            s.Draw(View, Projection);
+    }
 
 
     private void GenerateOriginalMeshBoundingBoxes()
@@ -402,7 +404,7 @@ public bool IsDead => CurrentHealth <= 0;
         return BoundingBox.CreateFromPoints(transformedCorners);
     }
 
-    
+
     public void CheckCollisionsWithEnemyShells(List<Shell> enemyShells)
     {
         foreach (var shell in enemyShells)
@@ -413,8 +415,40 @@ public bool IsDead => CurrentHealth <= 0;
                 shell.isExpired = true;
             }
         }
+    }   
+    
+     public void DrawShadow(GraphicsDevice graphicsDevice, Effect shadowEffect, Matrix lightViewProj)
+{
+    Matrix world = Matrix.CreateScale(1.5f)
+                 * Matrix.CreateRotationX(-MathHelper.PiOver2)
+                 * Matrix.CreateRotationY((float)Math.Atan2(_rotation.X, _rotation.Z))
+                 * Matrix.CreateTranslation(_position);
+
+    shadowEffect.CurrentTechnique = shadowEffect.Techniques["ShadowPass"];
+
+    foreach (ModelMesh mesh in Model.Meshes)
+    {
+        foreach (ModelMeshPart part in mesh.MeshParts)
+        {
+            part.Effect = shadowEffect;
+            shadowEffect.Parameters["World"].SetValue(world);
+            shadowEffect.Parameters["LightViewProjection"].SetValue(lightViewProj);
+
+            foreach (var pass in shadowEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+
+                graphicsDevice.SetVertexBuffer(part.VertexBuffer);
+                graphicsDevice.Indices = part.IndexBuffer;
+
+                graphicsDevice.DrawIndexedPrimitives(
+                    PrimitiveType.TriangleList,
+                    part.VertexOffset,
+                    part.StartIndex,
+                    part.PrimitiveCount);
+            }
+        }
     }
-    
-    
+}
     
 }

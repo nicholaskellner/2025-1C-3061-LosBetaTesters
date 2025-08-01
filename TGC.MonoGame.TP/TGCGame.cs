@@ -81,7 +81,11 @@ namespace TGC.MonoGame.TP
         private Texture2D whitePixel;
         Vector3 lightPosition = new Vector3(50f, 30f, 30f);
         private Skybox skybox;
-        
+        RenderTarget2D shadowMap;
+        Matrix lightView, lightProjection;
+        Matrix lightViewProjection;
+        Effect shadowEffect;
+
 
 
         protected override void Initialize()
@@ -122,6 +126,14 @@ namespace TGC.MonoGame.TP
             menuMusic = Content.Load<Song>(ContentFolderMusic + "menu_music");
             skybox = new Skybox(100f); // Escala grande para que no se note el cubo
             skybox.LoadContent(Content);
+
+            //-------------------------------
+            shadowMap = new RenderTarget2D(GraphicsDevice, 1024, 1024, false,
+            SurfaceFormat.Single, DepthFormat.Depth24);
+
+            shadowEffect = Content.Load<Effect>(ContentFolderEffects + "ShadowMap");
+            
+            //-------------------------------
 
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Volume = 0.5f; // entre 0 y 1
@@ -222,192 +234,207 @@ namespace TGC.MonoGame.TP
         }
 
         protected override void Update(GameTime gameTime)
+{
+    KeyboardState kState = Keyboard.GetState();
+    var currentKeyboardState = Keyboard.GetState(); //esto es para el menu pausa
+    timeSinceLastInput += gameTime.ElapsedGameTime.TotalSeconds;
+
+    if (CurrentState == GameState.Menu)
+    {
+        // Menú principal
+        if (timeSinceLastInput >= inputCooldown)
         {
-            KeyboardState kState = Keyboard.GetState();
-            var currentKeyboardState = Keyboard.GetState(); //esto es para el menu pausa
-            timeSinceLastInput += gameTime.ElapsedGameTime.TotalSeconds;
-
-            if (CurrentState == GameState.Menu)
+            if (kState.IsKeyDown(Keys.Up))
             {
-                // Menú principal
-                if (timeSinceLastInput >= inputCooldown)
-                {
-                    if (kState.IsKeyDown(Keys.Up))
-                    {
-                        selectedOption = (selectedOption + menuOptions.Length - 1) % menuOptions.Length;
-                        timeSinceLastInput = 0;
-                    }
-                    else if (kState.IsKeyDown(Keys.Down))
-                    {
-                        selectedOption = (selectedOption + 1) % menuOptions.Length;
-                        timeSinceLastInput = 0;
-                    }
-                    else if (kState.IsKeyDown(Keys.Enter))
-                    {
-                        if (selectedOption == 0)
-                            CurrentState = GameState.Playing;
-                        else if (selectedOption == 1)
-                            Exit();
-
-                        timeSinceLastInput = 0;
-                    }
-                }
-
-                if (kState.IsKeyDown(Keys.M) && !previousKState.IsKeyDown(Keys.M))
-                {
-                    isMuted = !isMuted;
-                    MediaPlayer.IsMuted = isMuted;
-                }
+                selectedOption = (selectedOption + menuOptions.Length - 1) % menuOptions.Length;
+                timeSinceLastInput = 0;
             }
-
-            else if (CurrentState == GameState.Playing)
+            else if (kState.IsKeyDown(Keys.Down))
             {
-                if (tanque.IsDead)
-                {
-                    CurrentState = GameState.GameOver;
-                    return;
-                }
-                gameTimeElapsed += gameTime.ElapsedGameTime;
-                if (kState.IsKeyDown(Keys.Escape) && !previousKState.IsKeyDown(Keys.Escape))
-                {
-                    CurrentState = GameState.Paused;
-                }
-
-                trees.RemoveAll(t => t.isExpired);
-
-                // Actualizar tanque jugador
-                tanque.Update(gameTime, GetTerrainHeight);
-
-                // Colisiones OBB tanque jugador contra árboles (como ya tenías)
-                foreach (var obb in tanque.MeshOBBs)
-                {
-                    foreach (var tree in trees)
-                    {
-                        if (CollisionHelper.OBBvsAABB(obb, tree.hitBox))
-                        {
-                            tanque.RevertPosition();
-                            break;
-                        }
-                    }
-                }
-
-                // Colisiones balas tanque jugador contra árboles
-                foreach (var tree in trees)
-                {
-                    foreach (var shell in tanque.shells)
-                    {
-                        if (tree.hitBox.Contains(shell._position) != ContainmentType.Disjoint)
-                        {
-                            tree.getHit();
-                            shell.isExpired = true;
-                        }
-                    }
-                }
-
-                // --- NUEVO: Actualizar y manejar tanques enemigos ---
-                foreach (var enemy in enemies)
-                {
-                    enemy.Update(gameTime, GetTerrainHeight, tanque._position, tanque.shells, enemies); // que persigan o hagan lógica
-
-                    // Colisiones balas enemigos contra tanque jugador con probabilidad de acierto
-                    foreach (var shell in enemy.shells)
-                    {
-                        // Supongo que tanque.BoundingBox es el AABB del tanque jugador
-                        if (tanque.BoundingBox.Intersects(shell.BoundingBox))
-                        {
-                            // Aplicar daño con un porcentaje de acierto
-                            Random rnd = new Random();
-                            if (rnd.NextDouble() < 0.5) // 50% de acierto, cambiá este valor como quieras
-                            {
-                                tanque.TakeDamage(10);
-                            }
-                            shell.isExpired = true;
-                        }
-                    }
-
-
-                    // Eliminar balas expiradas de enemigos
-                    enemy.shells.RemoveAll(s => s.isExpired);
-
-                }
-
-                foreach (var shell in tanque.shells)
-                {
-                    foreach (var enemy in enemies)
-                    {
-                        if (!enemy.IsDead && enemy.BoundingBox.Intersects(shell.BoundingBox))
-                        {
-                            enemy.TakeDamage(10); // o el daño que quieras
-                            shell.isExpired = true;
-                        }
-                    }
-                }
-
-                // Crear la cámara
-                View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
-                float farPlaneDistance = 1000f; // o cualquier valor que quieras
-
-                Projection = Matrix.CreatePerspectiveFieldOfView(
-                    MathHelper.PiOver4,
-                    GraphicsDevice.Viewport.AspectRatio,
-                    1f,            // near plane
-                    farPlaneDistance);
-                        }
-
-            else if (CurrentState == GameState.Paused)
-            {
-                if (timeSinceLastInput >= inputCooldown)
-                {
-                    if (kState.IsKeyDown(Keys.Up))
-                    {
-                        pauseSelectedOption = (pauseSelectedOption + pauseMenuOptions.Length - 1) % pauseMenuOptions.Length;
-                        timeSinceLastInput = 0;
-                    }
-                    else if (kState.IsKeyDown(Keys.Down))
-                    {
-                        pauseSelectedOption = (pauseSelectedOption + 1) % pauseMenuOptions.Length;
-                        timeSinceLastInput = 0;
-                    }
-                    else if (kState.IsKeyDown(Keys.Enter))
-                    {
-                        if (pauseSelectedOption == 0)
-                            CurrentState = GameState.Playing;
-                        else if (pauseSelectedOption == 1)
-                        {
-                            CurrentState = GameState.Menu;
-                            MediaPlayer.Play(menuMusic); // volver a la música del menú
-                        }
-                        timeSinceLastInput = 0;
-                    }
-                    else if (kState.IsKeyDown(Keys.R))
-                    {
-                        CurrentState = GameState.Playing;
-                        timeSinceLastInput = 0;
-                    }
-                }
+                selectedOption = (selectedOption + 1) % menuOptions.Length;
+                timeSinceLastInput = 0;
             }
-            else if (CurrentState == GameState.GameOver)
+            else if (kState.IsKeyDown(Keys.Enter))
             {
-                if (Keyboard.GetState().IsKeyDown(Keys.R) && !previousKState.IsKeyDown(Keys.R))
-                {
-                    RestartGame();
-                }
-            }
+                if (selectedOption == 0)
+                    CurrentState = GameState.Playing;
+                else if (selectedOption == 1)
+                    Exit();
 
-            previousKState = kState;
-            base.Update(gameTime);
+                timeSinceLastInput = 0;
+            }
         }
+
+        if (kState.IsKeyDown(Keys.M) && !previousKState.IsKeyDown(Keys.M))
+        {
+            isMuted = !isMuted;
+            MediaPlayer.IsMuted = isMuted;
+        }
+    }
+
+    else if (CurrentState == GameState.Playing)
+    {
+        if (tanque.IsDead)
+        {
+            CurrentState = GameState.GameOver;
+            return;
+        }
+
+        gameTimeElapsed += gameTime.ElapsedGameTime;
+
+        if (kState.IsKeyDown(Keys.Escape) && !previousKState.IsKeyDown(Keys.Escape))
+        {
+            CurrentState = GameState.Paused;
+        }
+
+        trees.RemoveAll(t => t.isExpired);
+
+        // Actualizar tanque jugador
+        tanque.Update(gameTime, GetTerrainHeight);
+
+        // Colisiones OBB tanque jugador contra árboles
+        foreach (var obb in tanque.MeshOBBs)
+        {
+            foreach (var tree in trees)
+            {
+                if (CollisionHelper.OBBvsAABB(obb, tree.hitBox))
+                {
+                    tanque.RevertPosition();
+                    break;
+                }
+            }
+        }
+
+        // Colisiones balas tanque jugador contra árboles
+        foreach (var tree in trees)
+        {
+            foreach (var shell in tanque.shells)
+            {
+                if (tree.hitBox.Contains(shell._position) != ContainmentType.Disjoint)
+                {
+                    tree.getHit();
+                    shell.isExpired = true;
+                }
+            }
+        }
+
+        // --- NUEVO: Actualizar y manejar tanques enemigos ---
+        foreach (var enemy in enemies)
+        {
+            enemy.Update(gameTime, GetTerrainHeight, tanque._position, tanque.shells, enemies);
+
+            // Colisiones balas enemigos contra tanque jugador con probabilidad de acierto
+            foreach (var shell in enemy.shells)
+            {
+                if (tanque.BoundingBox.Intersects(shell.BoundingBox))
+                {
+                    Random rnd = new Random();
+                    if (rnd.NextDouble() < 0.5) // 50% de acierto
+                    {
+                        tanque.TakeDamage(10);
+                    }
+                    shell.isExpired = true;
+                }
+            }
+
+            enemy.shells.RemoveAll(s => s.isExpired);
+        }
+
+        // Colisiones balas jugador contra tanques enemigos
+        foreach (var shell in tanque.shells)
+        {
+            foreach (var enemy in enemies)
+            {
+                if (!enemy.IsDead && enemy.BoundingBox.Intersects(shell.BoundingBox))
+                {
+                    enemy.TakeDamage(10);
+                    shell.isExpired = true;
+                }
+            }
+        }
+
+        // Crear la cámara
+        View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
+        float farPlaneDistance = 1000f;
+
+        Projection = Matrix.CreatePerspectiveFieldOfView(
+            MathHelper.PiOver4,
+            GraphicsDevice.Viewport.AspectRatio,
+            1f,
+            farPlaneDistance);
+
+        // 🔦 Actualizar vista de la luz (shadow mapping)
+        Vector3 lightDirection = Vector3.Normalize(new Vector3(-1, -1, -1));
+        Vector3 lightTarget = tanque._position;
+
+        lightView = Matrix.CreateLookAt(-lightDirection * 100 + lightTarget, lightTarget, Vector3.Up);
+        lightProjection = Matrix.CreateOrthographic(200, 200, 1, 300);
+        lightViewProjection = lightView * lightProjection;
+    }
+
+    else if (CurrentState == GameState.Paused)
+    {
+        if (timeSinceLastInput >= inputCooldown)
+        {
+            if (kState.IsKeyDown(Keys.Up))
+            {
+                pauseSelectedOption = (pauseSelectedOption + pauseMenuOptions.Length - 1) % pauseMenuOptions.Length;
+                timeSinceLastInput = 0;
+            }
+            else if (kState.IsKeyDown(Keys.Down))
+            {
+                pauseSelectedOption = (pauseSelectedOption + 1) % pauseMenuOptions.Length;
+                timeSinceLastInput = 0;
+            }
+            else if (kState.IsKeyDown(Keys.Enter))
+            {
+                if (pauseSelectedOption == 0)
+                    CurrentState = GameState.Playing;
+                else if (pauseSelectedOption == 1)
+                {
+                    CurrentState = GameState.Menu;
+                    MediaPlayer.Play(menuMusic);
+                }
+                timeSinceLastInput = 0;
+            }
+            else if (kState.IsKeyDown(Keys.R))
+            {
+                CurrentState = GameState.Playing;
+                timeSinceLastInput = 0;
+            }
+        }
+    }
+
+    else if (CurrentState == GameState.GameOver)
+    {
+        if (Keyboard.GetState().IsKeyDown(Keys.R) && !previousKState.IsKeyDown(Keys.R))
+        {
+            RestartGame();
+        }
+    }
+
+    previousKState = kState;
+    base.Update(gameTime);
+}
+
 
 
         protected override void Draw(GameTime gameTime)
 {
-   GraphicsDevice.Clear(Color.Black);
+    // 1. Renderizar shadow map (solo una vez)
+    RenderShadowMap(GraphicsDevice, shadowMap, shadowEffect, lightViewProjection, tanque, enemies);
 
+    // 2. Renderizar escena normal
+    GraphicsDevice.SetRenderTarget(null); // Importante volver al backbuffer
+    GraphicsDevice.Clear(Color.Black);
+
+    // Dibujar skybox sin depth stencil ni culling
     GraphicsDevice.DepthStencilState = DepthStencilState.None;
     GraphicsDevice.RasterizerState = RasterizerState.CullNone;
 
     skybox.Draw(View, Projection, cameraPosition);
 
+    // Restaurar estados para escena normal
     GraphicsDevice.DepthStencilState = DepthStencilState.Default;
     GraphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
 
@@ -417,7 +444,7 @@ namespace TGC.MonoGame.TP
         drawTerrainWithView(MenuView);
 
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, MenuView, Projection,lightPosition,cameraPosition);
+            tree.Draw(GraphicsDevice, MenuView, Projection, lightPosition, cameraPosition);
 
         spriteBatch.Begin();
         for (int i = 0; i < menuOptions.Length; i++)
@@ -431,32 +458,22 @@ namespace TGC.MonoGame.TP
     {
         drawTerrain();
 
-        // Dibuja tanque jugador
-        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        // Pasar shadowMap y lightViewProjection para que apliquen sombras
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
 
-        // Dibuja tanques enemigos
         foreach (var enemy in enemies)
         {
-            enemy.Draw(GraphicsDevice, View, Projection, cameraPosition);
+            enemy.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
         }
 
         foreach (var tree in trees)
         {
-            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
-            //DrawHitBox(tree.hitBox);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
         }
 
-        //foreach (var obb in tanque.MeshOBBs)
-        //{
-        //    debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
-       // }
-
-        // --------------------------
-        // HUD + Barras de vida enemigos
-        // --------------------------
+        // HUD y barras de vida
         spriteBatch.Begin();
 
-        // Vida del jugador
         int barWidth = 200;
         int barHeight = 20;
         float healthPercent = (float)tanque.CurrentHealth / tanque.MaxHealth;
@@ -471,12 +488,10 @@ namespace TGC.MonoGame.TP
         spriteBatch.DrawString(menuFont, $"Muertes: {kills}", new Vector2(20, 70), Color.White);
         spriteBatch.DrawString(menuFont, $"Tiempo: {gameTimeElapsed.Minutes:D2}:{gameTimeElapsed.Seconds:D2}", new Vector2(20, 95), Color.White);
 
-        // Barras de vida sobre enemigos
         foreach (var enemy in enemies)
         {
             if (enemy.IsDead) continue;
 
-            // Posición 3D sobre el tanque
             Vector3 worldPos = enemy._position + new Vector3(0, 20, 0);
             Vector3 screenPos = GraphicsDevice.Viewport.Project(worldPos, Projection, View, Matrix.Identity);
 
@@ -494,9 +509,9 @@ namespace TGC.MonoGame.TP
     else if (CurrentState == GameState.Paused)
     {
         drawTerrain();
-        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
 
         spriteBatch.Begin();
         for (int i = 0; i < pauseMenuOptions.Length; i++)
@@ -509,9 +524,9 @@ namespace TGC.MonoGame.TP
     else if (CurrentState == GameState.GameOver)
     {
         drawTerrain();
-        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition);
+        tanque.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
 
         spriteBatch.Begin();
         spriteBatch.DrawString(menuFont, "Has sido destruido", new Vector2(100, 100), Color.Red);
@@ -525,25 +540,48 @@ namespace TGC.MonoGame.TP
 
 
 
+
+
         private void drawTerrain()
         {
             GraphicsDevice.SetVertexBuffer(vertexBuffer);
             GraphicsDevice.Indices = indexBuffer;
 
-            _effect3.Parameters["World"].SetValue(Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200));
+            // Matriz de mundo del terreno (escala + posición)
+            Matrix worldMatrix = Matrix.CreateScale(10, 1, 10) * Matrix.CreateTranslation(-200, -20, -200);
+
+            _effect3.Parameters["World"].SetValue(worldMatrix);
             _effect3.Parameters["View"].SetValue(View);
             _effect3.Parameters["Projection"].SetValue(Projection);
+
+            // Parámetros de iluminación
             _effect3.Parameters["ambientColor"].SetValue(Vector3.One);
-            _effect3.Parameters["KAmbient"].SetValue(1f);
-            _effect3.Parameters["Texture"].SetValue(Texture23);
+            _effect3.Parameters["KAmbient"].SetValue(0.8f); // Ajustá esto si querés menos luz ambiente
+            _effect3.Parameters["lightDirection"].SetValue(lightPosition); // debe estar normalizado
+            _effect3.Parameters["lightColor"].SetValue(new Vector3(1f, 1f, 1f)); // blanco por defecto
+
+            // Posición de la cámara (para Blinn-Phong)
+            _effect3.Parameters["cameraPosition"].SetValue(cameraPosition);
+
+            // Texturas
+            _effect3.Parameters["Texture"].SetValue(Texture23);  // texturas del terreno
             _effect3.Parameters["Texture2"].SetValue(Texture2);
 
+            // Sombreado
+            _effect3.Parameters["LightViewProjection"].SetValue(lightViewProjection); // matriz vista-proyección de la luz
+            _effect3.Parameters["ShadowMap"].SetValue(shadowMap); // textura generada desde la perspectiva de la luz
+
+            // Tiling
+            _effect3.Parameters["Tiling"]?.SetValue(new Vector2(0.5f, 0.5f));
+
+            // Dibujar
             foreach (var pass in _effect3.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, indices.Count / 3);
             }
         }
+
         private void drawTerrainWithView(Matrix view)
         {
             GraphicsDevice.SetVertexBuffer(vertexBuffer);
@@ -670,6 +708,29 @@ namespace TGC.MonoGame.TP
                     trees.Add(new Tree(tree, _effect2, new Vector3(x, alt, y), Vector3.One, new BoundingBox(boxMin, boxMax), treeColors, scale));
             }
         }
+
+        private void RenderShadowMap(GraphicsDevice graphicsDevice, RenderTarget2D shadowMap, Effect shadowEffect, Matrix lightViewProjection, Tank playerTank, List<EnemyTank> enemyTanks)
+        {
+            graphicsDevice.SetRenderTarget(shadowMap);
+            graphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.White, 1.0f, 0);
+
+            graphicsDevice.DepthStencilState = DepthStencilState.Default;
+            graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+
+            if (!playerTank.IsDead)
+                playerTank.DrawShadow(graphicsDevice, shadowEffect, lightViewProjection);
+
+            foreach (var enemy in enemyTanks)
+            {
+                if (!enemy.IsDead)
+                    enemy.DrawShadow(graphicsDevice, shadowEffect, lightViewProjection);
+            }
+
+            graphicsDevice.SetRenderTarget(null);
+        }
+
     }
+    
+
     
 }
