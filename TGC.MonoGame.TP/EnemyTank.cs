@@ -44,19 +44,42 @@ public class EnemyTank
         ShellEffect = content.Load<Effect>("Effects/ShaderShell");
     }
 
-   public void Update(GameTime gameTime, TerrainHeightFunction getHeight, Vector3 playerPosition, List<Shell> playerShells, List<EnemyTank> allEnemies)
+ public void Update(GameTime gameTime, TerrainHeightFunction getHeight, Vector3 playerPosition, List<Shell> playerShells, List<EnemyTank> allEnemies)
 {
     if (IsDead) return;
 
     float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-    // Dirección hacia jugador (XZ)
-    Vector3 direction = playerPosition - _position;
-    direction.Y = 0;
-    if (direction.LengthSquared() > 0.001f)
-        direction.Normalize();
+    Vector3 toPlayer = playerPosition - _position;
+    toPlayer.Y = 0;
 
-    // --- Fuerza de separación con otros enemigos ---
+    float distanceToPlayer = toPlayer.Length();
+
+    Vector3 moveDirection = Vector3.Zero;
+
+    float minDistance = 30f; // distancia mínima para acercarse
+
+    if (distanceToPlayer > minDistance)
+    {
+        // Si está lejos, se acerca hacia el jugador
+        moveDirection = Vector3.Normalize(toPlayer);
+    }
+    else
+    {
+        // Si está cerca o igual a la distancia mínima, se mueve hacia un costado para esquivar
+
+        // Para el caso que distanciaToPlayer sea cero (ej: mismo punto), evitar dividir por cero
+        Vector3 dirNormalized = (distanceToPlayer > 0.001f) ? Vector3.Normalize(toPlayer) : Vector3.Forward;
+
+        // Movimiento lateral: vector perpendicular en XZ
+        moveDirection = new Vector3(-dirNormalized.Z, 0, dirNormalized.X);
+
+        // Alternar costado para evitar que todos vayan al mismo lado
+        if (random.NextDouble() > 0.5)
+            moveDirection = -moveDirection;
+    }
+
+    // --- Separación con otros enemigos ---
     Vector3 separation = Vector3.Zero;
     float separationRadius = 15f;
     foreach (var other in allEnemies)
@@ -64,23 +87,25 @@ public class EnemyTank
         if (other == this || other.IsDead) continue;
 
         Vector3 toOther = _position - other._position;
-        float distance = toOther.Length();
+        float dist = toOther.Length();
 
-        if (distance < separationRadius && distance > 0.01f)
+        if (dist < separationRadius && dist > 0.01f)
         {
             toOther.Normalize();
-            float strength = (separationRadius - distance) / separationRadius;
+            float strength = (separationRadius - dist) / separationRadius;
             separation += toOther * strength;
         }
     }
 
-    // Dirección final combinada
-    Vector3 finalDirection = direction + separation;
+    // Combinar dirección con separación
+    Vector3 finalDirection = moveDirection + separation;
     if (finalDirection.LengthSquared() > 0.001f)
     {
         finalDirection.Normalize();
+
         float speed = 1.5f;
         _position += finalDirection * speed * elapsed;
+
         _rotation = finalDirection;
     }
 
@@ -110,6 +135,7 @@ public class EnemyTank
         shell.Update(gameTime);
     shells.RemoveAll(s => s.isExpired);
 }
+
 
 
     // Método para obtener BoundingBox del tanque

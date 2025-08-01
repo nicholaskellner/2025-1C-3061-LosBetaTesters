@@ -443,13 +443,13 @@ namespace TGC.MonoGame.TP
         foreach (var tree in trees)
         {
             tree.Draw(GraphicsDevice, View, Projection,lightPosition,cameraPosition);
-            DrawHitBox(tree.hitBox);
+            //DrawHitBox(tree.hitBox);
         }
 
-        foreach (var obb in tanque.MeshOBBs)
-        {
-            debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
-        }
+        //foreach (var obb in tanque.MeshOBBs)
+        //{
+        //    debugDraw.DrawOrientedBoundingBox(obb, View, Projection);
+       // }
 
         // --------------------------
         // HUD + Barras de vida enemigos
