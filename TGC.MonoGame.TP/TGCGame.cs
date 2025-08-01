@@ -90,7 +90,7 @@ namespace TGC.MonoGame.TP
             GraphicsDevice.RasterizerState = rasterizerState;
             View = Matrix.CreateLookAt(new Vector3(15, 5, 0), Vector3.Zero, Vector3.Up);
             MenuView = Matrix.CreateLookAt(new Vector3(150, 80, 150), Vector3.Zero, Vector3.Up);
-            Projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 250);
+            Projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 1000f);
 
             short[] triangleIndices = {
                 0, 1, 1, 2, 2, 3, 3, 0,
@@ -307,7 +307,7 @@ namespace TGC.MonoGame.TP
                 // --- NUEVO: Actualizar y manejar tanques enemigos ---
                 foreach (var enemy in enemies)
                 {
-                    enemy.Update(gameTime, GetTerrainHeight, tanque._position, tanque.shells,enemies); // que persigan o hagan lógica
+                    enemy.Update(gameTime, GetTerrainHeight, tanque._position, tanque.shells, enemies); // que persigan o hagan lógica
 
                     // Colisiones balas enemigos contra tanque jugador con probabilidad de acierto
                     foreach (var shell in enemy.shells)
@@ -328,24 +328,31 @@ namespace TGC.MonoGame.TP
 
                     // Eliminar balas expiradas de enemigos
                     enemy.shells.RemoveAll(s => s.isExpired);
-                     
+
                 }
 
-                 foreach (var shell in tanque.shells)
+                foreach (var shell in tanque.shells)
+                {
+                    foreach (var enemy in enemies)
                     {
-                        foreach (var enemy in enemies)
+                        if (!enemy.IsDead && enemy.BoundingBox.Intersects(shell.BoundingBox))
                         {
-                            if (!enemy.IsDead && enemy.BoundingBox.Intersects(shell.BoundingBox))
-                            {
-                                enemy.TakeDamage(10); // o el daño que quieras
-                                shell.isExpired = true;
-                            }
+                            enemy.TakeDamage(10); // o el daño que quieras
+                            shell.isExpired = true;
                         }
                     }
+                }
 
                 // Crear la cámara
                 View = Matrix.CreateLookAt(tanque._position - tanque._rotation * 20 + new Vector3(0, 7, 0), tanque._position, Vector3.Up);
-            }
+                float farPlaneDistance = 1000f; // o cualquier valor que quieras
+
+                Projection = Matrix.CreatePerspectiveFieldOfView(
+                    MathHelper.PiOver4,
+                    GraphicsDevice.Viewport.AspectRatio,
+                    1f,            // near plane
+                    farPlaneDistance);
+                        }
 
             else if (CurrentState == GameState.Paused)
             {

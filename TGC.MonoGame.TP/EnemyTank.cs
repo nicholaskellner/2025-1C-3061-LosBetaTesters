@@ -151,8 +151,7 @@ public class EnemyTank
 
     foreach (var mesh in Model.Meshes)
     {
-         Console.WriteLine($"Mesh: {mesh.Name}");
-            Console.WriteLine($"  Bone: {mesh.ParentBone.Name}");
+         
         foreach (var meshPart in mesh.MeshParts)
             {
                 // ⚠️ Usar TU shader
