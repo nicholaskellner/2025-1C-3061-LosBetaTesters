@@ -151,45 +151,61 @@ public class EnemyTank
 
     foreach (var mesh in Model.Meshes)
     {
+         Console.WriteLine($"Mesh: {mesh.Name}");
+            Console.WriteLine($"  Bone: {mesh.ParentBone.Name}");
         foreach (var meshPart in mesh.MeshParts)
-        {
-            // ⚠️ Usar TU shader
-            var effect = Effect.Clone();
-            meshPart.Effect = effect;
-
-            // Establecer técnica (por si acaso)
-            effect.CurrentTechnique = effect.Techniques[0];
-
-            // Setear parámetros
-            effect.Parameters["World"]?.SetValue(world);
-            effect.Parameters["View"]?.SetValue(view);
-            effect.Parameters["Projection"]?.SetValue(projection);
-            effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInvTrans);
-
-            effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
-            effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
-            effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
-            effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
-            effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f));
-            effect.Parameters["shininess"]?.SetValue(80f);
-            effect.Parameters["KAmbient"]?.SetValue(0.7f);
-            effect.Parameters["Texture"]?.SetValue(Texture);
-
-            // Dibujar meshPart manualmente
-            graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
-            graphicsDevice.Indices = meshPart.IndexBuffer;
-
-            foreach (var pass in effect.CurrentTechnique.Passes)
             {
-                pass.Apply();
-                graphicsDevice.DrawIndexedPrimitives(
-                    PrimitiveType.TriangleList,
-                    meshPart.VertexOffset,
-                    meshPart.StartIndex,
-                    meshPart.PrimitiveCount
-                );
+                // ⚠️ Usar TU shader
+                var effect = Effect.Clone();
+                meshPart.Effect = effect;
+
+                // Establecer técnica (por si acaso)
+                effect.CurrentTechnique = effect.Techniques[0];
+
+                // Setear parámetros
+                if (mesh.Name.Equals("Wheel1") || mesh.Name.Equals("Wheel2") ||
+                    mesh.Name.Equals("Wheel3") || mesh.Name.Equals("Wheel4") ||
+                    mesh.Name.Equals("Wheel5") || mesh.Name.Equals("Wheel6") ||
+                    mesh.Name.Equals("Wheel7") || mesh.Name.Equals("Wheel8") ||
+                    mesh.Name.Equals("Wheel9") || mesh.Name.Equals("Wheel10") ||
+                    mesh.Name.Equals("Wheel11") || mesh.Name.Equals("Wheel12") ||
+                    mesh.Name.Equals("Wheel13") || mesh.Name.Equals("Wheel14") ||
+                    mesh.Name.Equals("Wheel15") || mesh.Name.Equals("Wheel16") ||
+                    mesh.Name.Equals("Wheel17") || mesh.Name.Equals("Wheel18") ||
+                    mesh.Name.Equals("Wheel19"))
+                {
+                    effect.Parameters["World"]?.SetValue(mesh.ParentBone.Transform * world);
+                }
+
+                else effect.Parameters["World"]?.SetValue(world);
+                effect.Parameters["View"]?.SetValue(view);
+                effect.Parameters["Projection"]?.SetValue(projection);
+                effect.Parameters["WorldInverseTranspose"]?.SetValue(worldInvTrans);
+
+                effect.Parameters["ambientColor"]?.SetValue(new Vector3(1f, 1f, 1f));
+                effect.Parameters["lightPosition"]?.SetValue(new Vector3(50, 50, 30));
+                effect.Parameters["cameraPosition"]?.SetValue(cameraPosition);
+                effect.Parameters["diffuseColor"]?.SetValue(new Vector3(0.5f, 0.5f, 0.5f)); // difusa más tenue
+                effect.Parameters["specularColor"]?.SetValue(new Vector3(0.8f, 0.85f, 0.9f));
+                effect.Parameters["shininess"]?.SetValue(80f);
+                effect.Parameters["KAmbient"]?.SetValue(0.7f);
+                effect.Parameters["Texture"]?.SetValue(Texture);
+
+                // Dibujar meshPart manualmente
+                graphicsDevice.SetVertexBuffer(meshPart.VertexBuffer);
+                graphicsDevice.Indices = meshPart.IndexBuffer;
+
+                foreach (var pass in effect.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                    graphicsDevice.DrawIndexedPrimitives(
+                        PrimitiveType.TriangleList,
+                        meshPart.VertexOffset,
+                        meshPart.StartIndex,
+                        meshPart.PrimitiveCount
+                    );
+                }
             }
-        }
     }
 
     // Dibujar shells
