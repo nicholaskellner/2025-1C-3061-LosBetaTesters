@@ -45,7 +45,7 @@ public class Tree : Prop
         isExpired = true;
     }
 
-   public override void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 lightPos, Vector3 cameraPos)
+   public override void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 lightPos, Vector3 cameraPos, Matrix lightViewProjection, RenderTarget2D shadowMap)
 {
     foreach (var mesh in Model.Meshes)
     {

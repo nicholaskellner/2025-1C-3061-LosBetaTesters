@@ -38,7 +38,7 @@ public abstract class Prop
 
     public abstract void getHit();
 
-    public virtual void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 lightPos, Vector3 cameraPos)
+    public virtual void Draw(GraphicsDevice graphicsDevice, Matrix View, Matrix Projection, Vector3 lightPos, Vector3 cameraPos, Matrix lightViewProjection, RenderTarget2D shadowMap)
 {
     foreach (var mesh in Model.Meshes)
     {
@@ -60,6 +60,10 @@ public abstract class Prop
             effect.Parameters["KDiffuse"]?.SetValue(0.7f);
             effect.Parameters["KSpecular"]?.SetValue(0.5f);
             effect.Parameters["shininess"]?.SetValue(32f);
+
+            // Parámetros para sombras:
+            effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection);
+            effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
         }
 
         foreach (var part in mesh.MeshParts)
@@ -80,3 +84,4 @@ public abstract class Prop
 }
 
 }
+

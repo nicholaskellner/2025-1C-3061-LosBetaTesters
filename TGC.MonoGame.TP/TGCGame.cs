@@ -444,7 +444,7 @@ namespace TGC.MonoGame.TP
         drawTerrainWithView(MenuView);
 
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, MenuView, Projection, lightPosition, cameraPosition);
+            tree.Draw(GraphicsDevice, MenuView, Projection, lightPosition, cameraPosition,lightViewProjection,shadowMap);
 
         spriteBatch.Begin();
         for (int i = 0; i < menuOptions.Length; i++)
@@ -468,7 +468,7 @@ namespace TGC.MonoGame.TP
 
         foreach (var tree in trees)
         {
-            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition,lightViewProjection,shadowMap);
         }
 
         // HUD y barras de vida
@@ -511,7 +511,7 @@ namespace TGC.MonoGame.TP
         drawTerrain();
         tanque.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition,lightViewProjection,shadowMap);
 
         spriteBatch.Begin();
         for (int i = 0; i < pauseMenuOptions.Length; i++)
@@ -526,7 +526,7 @@ namespace TGC.MonoGame.TP
         drawTerrain();
         tanque.Draw(GraphicsDevice, View, Projection, cameraPosition, lightViewProjection, shadowMap);
         foreach (var tree in trees)
-            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition);
+            tree.Draw(GraphicsDevice, View, Projection, lightPosition, cameraPosition,lightViewProjection,shadowMap);
 
         spriteBatch.Begin();
         spriteBatch.DrawString(menuFont, "Has sido destruido", new Vector2(100, 100), Color.Red);

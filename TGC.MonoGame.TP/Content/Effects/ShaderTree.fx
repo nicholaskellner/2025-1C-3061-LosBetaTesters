@@ -24,6 +24,18 @@ uniform float shininess;
 
 uniform float3 cameraPosition;
 
+uniform float4x4 LightViewProjection;
+uniform Texture2D ShadowMap;
+
+sampler2D ShadowMapSampler = sampler_state {
+    Texture = <ShadowMap>;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinFilter = Point;
+    MagFilter = Point;
+    MipFilter = None;
+};
+
 struct VertexShaderInput
 {
     float4 Position : POSITION0;
@@ -35,6 +47,7 @@ struct VertexShaderOutput
     float4 Position : SV_POSITION;
     float3 WorldPos : TEXCOORD0;
     float3 Normal   : TEXCOORD1;
+    float4 ShadowPos : TEXCOORD2;
 };
 
 VertexShaderOutput MainVS(VertexShaderInput input)
@@ -47,7 +60,19 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
     output.Normal = normalize(mul(input.Normal, (float3x3)WorldInverseTranspose));
 
+    output.ShadowPos = mul(worldPosition, LightViewProjection);
+
     return output;
+}
+
+float SampleShadow(float4 shadowPos)
+{
+    float2 shadowTexCoord = shadowPos.xy / shadowPos.w * 0.5 + 0.5;
+    float currentDepth = shadowPos.z / shadowPos.w;
+    float shadowDepth = tex2D(ShadowMapSampler, shadowTexCoord).r;
+    float bias = 0.005;
+    float shadow = currentDepth - bias > shadowDepth ? 0.5 : 1.0;
+    return shadow;
 }
 
 float4 MainPS(VertexShaderOutput input) : COLOR
@@ -69,7 +94,9 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     }
     float3 specular = lightColor * KSpecular * spec;
 
-    float3 finalColor = (ambient + diffuse + specular) * color.rgb;
+    float shadowFactor = SampleShadow(input.ShadowPos);
+
+    float3 finalColor = (ambient + shadowFactor * (diffuse + specular)) * color.rgb;
     return float4(saturate(finalColor), color.a);
 }
 
@@ -81,5 +108,6 @@ technique BasicColorDrawing
         PixelShader = compile PS_SHADERMODEL MainPS();
     }
 };
+
 
 
